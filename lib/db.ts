@@ -11,8 +11,18 @@ const ADMIN_USERS_FILE = path.join(DATA_DIR, 'admin_users.json')
 
 // Ensure data directory exists
 function ensureDataDir() {
+  console.log(`[DB] Data dir: ${DATA_DIR}`)
+  console.log(`[DB] CWD: ${process.cwd()}`)
   if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true })
+    console.log(`[DB] Creating data directory...`)
+    try {
+      fs.mkdirSync(DATA_DIR, { recursive: true })
+      console.log(`[DB] Data directory created`)
+    } catch (error) {
+      console.error(`[DB] Failed to create data directory:`, error)
+    }
+  } else {
+    console.log(`[DB] Data directory exists`)
   }
 }
 
@@ -20,12 +30,17 @@ function ensureDataDir() {
 function readJsonFile<T>(filePath: string, defaultValue: T): T {
   ensureDataDir()
   try {
+    console.log(`[DB] Reading file: ${filePath}`)
+    console.log(`[DB] File exists: ${fs.existsSync(filePath)}`)
     if (fs.existsSync(filePath)) {
       const data = fs.readFileSync(filePath, 'utf-8')
-      return JSON.parse(data)
+      const parsed = JSON.parse(data)
+      console.log(`[DB] Successfully read ${Array.isArray(parsed) ? parsed.length : 'N/A'} records`)
+      return parsed
     }
+    console.log(`[DB] File not found, returning default value`)
   } catch (error) {
-    console.error(`Error reading ${filePath}:`, error)
+    console.error(`[DB] Error reading ${filePath}:`, error)
   }
   return defaultValue
 }
@@ -33,7 +48,14 @@ function readJsonFile<T>(filePath: string, defaultValue: T): T {
 // Helper to write JSON file
 function writeJsonFile<T>(filePath: string, data: T): void {
   ensureDataDir()
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2))
+  try {
+    console.log(`[DB] Writing file: ${filePath}`)
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2))
+    console.log(`[DB] Successfully wrote ${Array.isArray(data) ? data.length : 'N/A'} records`)
+  } catch (error) {
+    console.error(`[DB] Error writing ${filePath}:`, error)
+    throw error
+  }
 }
 
 // Generate UUID

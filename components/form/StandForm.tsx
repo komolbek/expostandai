@@ -240,7 +240,7 @@ export function StandForm() {
                   <Wand2 className="h-10 w-10 text-white" />
                 </div>
                 <p className="text-gray-600 mb-6">
-                  Нажмите кнопку ниже, чтобы сгенерировать варианты дизайна вашего стенда с помощью DALL-E 3
+                  Нажмите кнопку ниже, чтобы сгенерировать варианты дизайна вашего стенда
                 </p>
                 <Button
                   onClick={handleGenerateDesigns}

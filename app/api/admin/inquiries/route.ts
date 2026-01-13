@@ -12,7 +12,11 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
 
+    console.log('[Admin Inquiries] Fetching inquiries:', { status, page, limit })
+
     const { inquiries, total } = await getInquiries({ status, page, limit })
+
+    console.log('[Admin Inquiries] Found:', { total, count: inquiries.length })
 
     return NextResponse.json({
       inquiries,
@@ -24,9 +28,9 @@ export async function GET(request: NextRequest) {
     if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    console.error('Inquiries API error:', error)
+    console.error('[Admin Inquiries] Error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     )
   }
