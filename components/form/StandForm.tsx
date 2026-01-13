@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { ArrowLeft, ArrowRight, Check, Loader2, Building2, Ruler, Palette, LayoutGrid, Upload, Wallet, User, Sparkles, Wand2 } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { ArrowLeft, ArrowRight, Check, Loader2, Building2, Ruler, Palette, LayoutGrid, Upload, Wallet, User, Sparkles, Wand2, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { StepCompanyInfo } from './steps/StepCompanyInfo'
@@ -14,6 +14,8 @@ import { StepContactInfo } from './steps/StepContactInfo'
 import { GeneratedImages } from '@/components/chat/GeneratedImages'
 import type { InquiryData, ContactInfo } from '@/lib/types'
 
+const MAX_GENERATION_REQUESTS = 2
+
 const STEPS = [
   { id: 'company', title: 'Компания', icon: Building2, color: 'from-blue-500 to-blue-600' },
   { id: 'specs', title: 'Параметры', icon: Ruler, color: 'from-violet-500 to-violet-600' },
@@ -21,8 +23,8 @@ const STEPS = [
   { id: 'zones', title: 'Зоны', icon: LayoutGrid, color: 'from-orange-500 to-orange-600' },
   { id: 'files', title: 'Файлы', icon: Upload, color: 'from-teal-500 to-teal-600' },
   { id: 'budget', title: 'Бюджет', icon: Wallet, color: 'from-emerald-500 to-emerald-600' },
-  { id: 'preview', title: 'Превью', icon: Sparkles, color: 'from-purple-500 to-fuchsia-600' },
   { id: 'contact', title: 'Контакты', icon: User, color: 'from-indigo-500 to-indigo-600' },
+  { id: 'preview', title: 'Превью', icon: Sparkles, color: 'from-purple-500 to-fuchsia-600' },
 ]
 
 export function StandForm() {
@@ -33,12 +35,27 @@ export function StandForm() {
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedImages, setGeneratedImages] = useState<string[]>([])
+  const [generationCount, setGenerationCount] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
+
+  // AbortController for canceling generation
+  const abortControllerRef = useRef<AbortController | null>(null)
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
+  }, [])
 
   const updateFormData = (data: Partial<InquiryData>) => {
     setFormData((prev) => ({ ...prev, ...data }))
   }
+
+  const remainingGenerations = MAX_GENERATION_REQUESTS - generationCount
 
   const nextStep = () => {
     if (currentStep < STEPS.length - 1) {
@@ -53,22 +70,47 @@ export function StandForm() {
   }
 
   const handleGenerateDesigns = async () => {
+    if (remainingGenerations <= 0) {
+      alert('Вы использовали все попытки генерации. Пожалуйста, отправьте заявку с текущими дизайнами.')
+      return
+    }
+
+    // Cancel any ongoing generation
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    abortControllerRef.current = new AbortController()
+
     setIsGenerating(true)
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ inquiryData: formData }),
+        signal: abortControllerRef.current.signal,
       })
 
       if (!response.ok) throw new Error('Failed to generate designs')
 
       const data = await response.json()
       setGeneratedImages(data.images.map((img: { url: string }) => img.url))
+      setGenerationCount((prev) => prev + 1)
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('Generation was cancelled')
+        return
+      }
       console.error('Failed to generate designs:', error)
       alert('Не удалось сгенерировать дизайны. Попробуйте ещё раз или оставьте заявку без визуализации.')
     } finally {
+      setIsGenerating(false)
+      abortControllerRef.current = null
+    }
+  }
+
+  const handleCancelGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
       setIsGenerating(false)
     }
   }
@@ -112,12 +154,61 @@ export function StandForm() {
         return <StepFilesUpload data={formData} onChange={updateFormData} />
       case 'budget':
         return <StepBudgetNotes data={formData} onChange={updateFormData} />
+      case 'contact':
+        return (
+          <StepContactInfo
+            data={contactInfo}
+            onChange={setContactInfo}
+            companyName={formData.company_name}
+          />
+        )
       case 'preview':
         return (
           <div className="space-y-6">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">AI визуализация стенда</h2>
               <p className="mt-1 text-gray-500">Сгенерируйте предварительные дизайны вашего стенда с помощью ИИ</p>
+            </div>
+
+            {/* Generation Limit Warning */}
+            <div className={`rounded-xl p-4 flex items-start gap-3 ${
+              remainingGenerations === 0
+                ? 'bg-red-50 border border-red-200'
+                : remainingGenerations === 1
+                ? 'bg-amber-50 border border-amber-200'
+                : 'bg-blue-50 border border-blue-200'
+            }`}>
+              <AlertCircle className={`h-5 w-5 flex-shrink-0 mt-0.5 ${
+                remainingGenerations === 0
+                  ? 'text-red-500'
+                  : remainingGenerations === 1
+                  ? 'text-amber-500'
+                  : 'text-blue-500'
+              }`} />
+              <div>
+                <p className={`font-medium ${
+                  remainingGenerations === 0
+                    ? 'text-red-700'
+                    : remainingGenerations === 1
+                    ? 'text-amber-700'
+                    : 'text-blue-700'
+                }`}>
+                  {remainingGenerations === 0
+                    ? 'Лимит генераций исчерпан'
+                    : `Осталось генераций: ${remainingGenerations} из ${MAX_GENERATION_REQUESTS}`}
+                </p>
+                <p className={`text-sm mt-0.5 ${
+                  remainingGenerations === 0
+                    ? 'text-red-600'
+                    : remainingGenerations === 1
+                    ? 'text-amber-600'
+                    : 'text-blue-600'
+                }`}>
+                  {remainingGenerations === 0
+                    ? 'Вы можете отправить заявку с текущими дизайнами или без них'
+                    : 'Каждая генерация создаёт 3 варианта дизайна'}
+                </p>
+              </div>
             </div>
 
             {/* Summary Card */}
@@ -143,7 +234,7 @@ export function StandForm() {
               </div>
             </div>
 
-            {generatedImages.length === 0 && !isGenerating && (
+            {generatedImages.length === 0 && !isGenerating && remainingGenerations > 0 && (
               <div className="text-center py-8">
                 <div className="mx-auto h-20 w-20 rounded-full bg-gradient-to-br from-purple-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-purple-500/30 mb-4">
                   <Wand2 className="h-10 w-10 text-white" />
@@ -168,33 +259,47 @@ export function StandForm() {
                 </div>
                 <p className="font-semibold text-gray-900">Генерируем дизайны...</p>
                 <p className="text-sm text-gray-500 mt-1">Это может занять 30-60 секунд</p>
+                <p className="text-xs text-gray-400 mt-2">Пожалуйста, не закрывайте страницу</p>
+                <Button
+                  variant="secondary"
+                  onClick={handleCancelGeneration}
+                  className="mt-4"
+                  size="sm"
+                >
+                  Отменить
+                </Button>
               </div>
             )}
 
-            {generatedImages.length > 0 && (
+            {generatedImages.length > 0 && !isGenerating && (
               <div>
                 <GeneratedImages images={generatedImages} />
-                <div className="mt-4 text-center">
-                  <Button
-                    variant="secondary"
-                    onClick={handleGenerateDesigns}
-                    disabled={isGenerating}
-                    leftIcon={<Sparkles className="h-4 w-4" />}
-                  >
-                    Сгенерировать заново
-                  </Button>
+                {remainingGenerations > 0 && (
+                  <div className="mt-4 text-center">
+                    <Button
+                      variant="secondary"
+                      onClick={handleGenerateDesigns}
+                      disabled={isGenerating}
+                      leftIcon={<Sparkles className="h-4 w-4" />}
+                    >
+                      Сгенерировать заново ({remainingGenerations} осталось)
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {generatedImages.length === 0 && !isGenerating && remainingGenerations === 0 && (
+              <div className="text-center py-8">
+                <div className="mx-auto h-20 w-20 rounded-full bg-gray-200 flex items-center justify-center mb-4">
+                  <Wand2 className="h-10 w-10 text-gray-400" />
                 </div>
+                <p className="text-gray-600">
+                  Лимит генераций исчерпан. Вы можете отправить заявку, и мы создадим визуализации вручную.
+                </p>
               </div>
             )}
           </div>
-        )
-      case 'contact':
-        return (
-          <StepContactInfo
-            data={contactInfo}
-            onChange={setContactInfo}
-            companyName={formData.company_name}
-          />
         )
       default:
         return null
@@ -215,10 +320,10 @@ export function StandForm() {
         return true // Optional
       case 'budget':
         return formData.budget_range
-      case 'preview':
-        return true // Optional - can proceed without generating
       case 'contact':
         return contactInfo.name && contactInfo.phone
+      case 'preview':
+        return true // Optional - can proceed without generating (this is now the last step)
       default:
         return true
     }
@@ -327,7 +432,7 @@ export function StandForm() {
       <div className="border-t border-gray-200 bg-white/80 backdrop-blur-sm p-4">
         <div className="mx-auto flex max-w-3xl gap-3">
           {currentStep > 0 && (
-            <Button variant="secondary" onClick={prevStep} leftIcon={<ArrowLeft className="h-4 w-4" />}>
+            <Button variant="secondary" onClick={prevStep} leftIcon={<ArrowLeft className="h-4 w-4" />} disabled={isGenerating}>
               Назад
             </Button>
           )}
@@ -336,24 +441,16 @@ export function StandForm() {
           {isLastStep ? (
             <Button
               onClick={handleSubmit}
-              disabled={!isStepValid() || isSubmitting}
+              disabled={!isStepValid() || isSubmitting || isGenerating}
               leftIcon={isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
               className="bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90 border-0"
             >
-              {isSubmitting ? 'Отправка...' : 'Отправить заявку'}
-            </Button>
-          ) : STEPS[currentStep].id === 'preview' ? (
-            <Button
-              onClick={nextStep}
-              rightIcon={<ArrowRight className="h-4 w-4" />}
-              className={`bg-gradient-to-r ${STEPS[currentStep].color} hover:opacity-90 border-0`}
-            >
-              {generatedImages.length > 0 ? 'Далее' : 'Пропустить'}
+              {isSubmitting ? 'Отправка...' : generatedImages.length > 0 ? 'Отправить заявку' : 'Отправить без дизайна'}
             </Button>
           ) : (
             <Button
               onClick={nextStep}
-              disabled={!isStepValid()}
+              disabled={!isStepValid() || isGenerating}
               rightIcon={<ArrowRight className="h-4 w-4" />}
               className={`bg-gradient-to-r ${STEPS[currentStep].color} hover:opacity-90 border-0`}
             >

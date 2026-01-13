@@ -31,11 +31,11 @@ export function formatDateTime(date: string | Date): string {
 
 export function formatBudget(range: string): string {
   const budgetMap: Record<string, string> = {
-    'under_5000': 'до $5,000',
-    '5000_10000': '$5,000-10,000',
-    '10000_20000': '$10,000-20,000',
-    '20000_50000': '$20,000-50,000',
-    'over_50000': 'Более $50,000',
+    'under_500k': 'до $5,000',
+    '500k_1m': '$5,000 – $10,000',
+    '1m_2m': '$10,000 – $20,000',
+    '2m_5m': '$20,000 – $50,000',
+    'over_5m': 'более $50,000',
   }
   return budgetMap[range] || range
 }

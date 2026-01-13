@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Palette, Cpu, Leaf, Minimize2, Target, TrendingUp, Store, Award, ArrowUpDown, Pipette } from 'lucide-react'
+import { Palette, Cpu, Leaf, Minimize2, Target, TrendingUp, Store, Award, ArrowUpDown, Pipette, Plus, X } from 'lucide-react'
 import type { InquiryData, StandStyle, MainGoal } from '@/lib/types'
 
 interface StepDesignPrefsProps {
@@ -23,29 +23,14 @@ const GOAL_OPTIONS: { value: MainGoal; label: string; icon: React.ReactNode }[] 
   { value: 'prestige', label: 'Престиж компании', icon: <Award className="h-4 w-4" /> },
 ]
 
-// Color palettes for easy selection
-const COLOR_PALETTES = [
-  { name: 'Корпоративный синий', background: '#F0F4F8', main: '#1E40AF', accent: '#3B82F6' },
-  { name: 'Элегантный чёрный', background: '#F5F5F5', main: '#1F2937', accent: '#6B7280' },
-  { name: 'Природный зелёный', background: '#F0FDF4', main: '#166534', accent: '#22C55E' },
-  { name: 'Тёплый оранжевый', background: '#FFF7ED', main: '#C2410C', accent: '#F97316' },
-  { name: 'Роскошный бордо', background: '#FDF2F8', main: '#881337', accent: '#DB2777' },
-  { name: 'Технологичный фиолет', background: '#FAF5FF', main: '#6B21A8', accent: '#A855F7' },
-]
-
 export function StepDesignPrefs({ data, onChange }: StepDesignPrefsProps) {
   const [showCustomColors, setShowCustomColors] = useState(false)
 
   const heightValue = data.height_meters || 3
   const heightPercent = ((heightValue - 2.5) / 2) * 100
 
-  const applyPalette = (palette: typeof COLOR_PALETTES[0]) => {
-    onChange({
-      color_background: palette.background,
-      color_main: palette.main,
-      color_accent: palette.accent,
-    })
-  }
+  // Check if any colors are set
+  const hasColors = data.color_main || data.color_accent || data.color_background
 
   return (
     <div className="space-y-6">
@@ -192,142 +177,149 @@ export function StepDesignPrefs({ data, onChange }: StepDesignPrefsProps) {
         <label className="mb-3 block text-sm font-medium text-gray-700">
           <span className="flex items-center gap-2">
             <Pipette className="h-4 w-4 text-gray-400" />
-            Цветовая схема <span className="text-xs text-gray-400">(опционально)</span>
+            Цвета бренда
           </span>
         </label>
 
-        {/* Color Palettes */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
-          {COLOR_PALETTES.map((palette) => {
-            const isSelected =
-              data.color_background === palette.background &&
-              data.color_main === palette.main &&
-              data.color_accent === palette.accent
-            return (
+        {!showCustomColors ? (
+          <button
+            type="button"
+            onClick={() => setShowCustomColors(true)}
+            className="w-full rounded-xl border-2 border-dashed border-gray-300 p-4 text-center hover:border-blue-400 hover:bg-blue-50/30 transition-all"
+          >
+            <Plus className="mx-auto h-6 w-6 text-gray-400 mb-2" />
+            <p className="text-sm font-medium text-gray-700">Указать цвета бренда</p>
+            <p className="text-xs text-gray-500 mt-1">Добавьте до 3 цветов вашего бренда</p>
+          </button>
+        ) : (
+          <div className="rounded-xl border-2 border-gray-200 p-4 space-y-4">
+            {/* Header with hide button */}
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-gray-700">Цвета вашего бренда</p>
               <button
-                key={palette.name}
                 type="button"
-                onClick={() => applyPalette(palette)}
-                className={`rounded-xl border-2 p-3 transition-all ${
-                  isSelected
-                    ? 'border-blue-500 ring-2 ring-blue-500/20'
-                    : 'border-gray-200 hover:border-blue-300'
-                }`}
+                onClick={() => {
+                  setShowCustomColors(false)
+                  onChange({ color_main: undefined, color_accent: undefined, color_background: undefined })
+                }}
+                className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
               >
-                <div className="flex gap-1 mb-2">
-                  <div
-                    className="h-6 w-6 rounded-md border border-gray-200"
-                    style={{ backgroundColor: palette.background }}
-                    title="Фон"
-                  />
-                  <div
-                    className="h-6 w-6 rounded-md"
-                    style={{ backgroundColor: palette.main }}
-                    title="Основной"
-                  />
-                  <div
-                    className="h-6 w-6 rounded-md"
-                    style={{ backgroundColor: palette.accent }}
-                    title="Акцент"
-                  />
-                </div>
-                <p className="text-xs font-medium text-gray-700 truncate">{palette.name}</p>
+                <X className="h-4 w-4" />
+                Скрыть
               </button>
-            )
-          })}
-        </div>
-
-        {/* Toggle for custom colors */}
-        <button
-          type="button"
-          onClick={() => setShowCustomColors(!showCustomColors)}
-          className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
-        >
-          <Pipette className="h-3 w-3" />
-          {showCustomColors ? 'Скрыть свои цвета' : 'Указать свои цвета'}
-        </button>
-
-        {/* Custom Color Inputs */}
-        {showCustomColors && (
-          <div className="mt-4 grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Фоновый цвет</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={data.color_background || '#F5F5F5'}
-                  onChange={(e) => onChange({ color_background: e.target.value })}
-                  className="h-10 w-10 rounded-lg border-2 border-gray-200 cursor-pointer"
-                />
-                <input
-                  type="text"
-                  value={data.color_background || '#F5F5F5'}
-                  onChange={(e) => onChange({ color_background: e.target.value })}
-                  className="flex-1 text-xs px-2 py-2 rounded-lg border border-gray-200 font-mono"
-                  placeholder="#F5F5F5"
-                />
-              </div>
             </div>
+
+            {/* Color 1 - Main (Required) */}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Основной цвет</label>
-              <div className="flex items-center gap-2">
+              <label className="block text-xs font-medium text-gray-600 mb-2">
+                Основной цвет <span className="text-red-500">*</span>
+              </label>
+              <div className="flex items-center gap-3">
                 <input
                   type="color"
                   value={data.color_main || '#1E40AF'}
                   onChange={(e) => onChange({ color_main: e.target.value })}
-                  className="h-10 w-10 rounded-lg border-2 border-gray-200 cursor-pointer"
+                  className="h-12 w-12 rounded-lg border-2 border-gray-200 cursor-pointer flex-shrink-0"
                 />
                 <input
                   type="text"
-                  value={data.color_main || '#1E40AF'}
+                  value={data.color_main || ''}
                   onChange={(e) => onChange({ color_main: e.target.value })}
-                  className="flex-1 text-xs px-2 py-2 rounded-lg border border-gray-200 font-mono"
+                  className="flex-1 px-3 py-2 rounded-lg border border-gray-200 font-mono text-sm"
                   placeholder="#1E40AF"
                 />
               </div>
             </div>
+
+            {/* Color 2 - Accent (Optional) */}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Акцентный цвет</label>
-              <div className="flex items-center gap-2">
+              <label className="block text-xs font-medium text-gray-600 mb-2">
+                Дополнительный цвет <span className="text-gray-400">(опционально)</span>
+              </label>
+              <div className="flex items-center gap-3">
                 <input
                   type="color"
                   value={data.color_accent || '#3B82F6'}
                   onChange={(e) => onChange({ color_accent: e.target.value })}
-                  className="h-10 w-10 rounded-lg border-2 border-gray-200 cursor-pointer"
+                  className="h-12 w-12 rounded-lg border-2 border-gray-200 cursor-pointer flex-shrink-0"
                 />
                 <input
                   type="text"
-                  value={data.color_accent || '#3B82F6'}
+                  value={data.color_accent || ''}
                   onChange={(e) => onChange({ color_accent: e.target.value })}
-                  className="flex-1 text-xs px-2 py-2 rounded-lg border border-gray-200 font-mono"
+                  className="flex-1 px-3 py-2 rounded-lg border border-gray-200 font-mono text-sm"
                   placeholder="#3B82F6"
                 />
+                {data.color_accent && (
+                  <button
+                    type="button"
+                    onClick={() => onChange({ color_accent: undefined })}
+                    className="p-2 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             </div>
-          </div>
-        )}
 
-        {/* Color Preview */}
-        {(data.color_background || data.color_main || data.color_accent) && (
-          <div className="mt-4 rounded-xl border-2 border-gray-200 p-3">
-            <p className="text-xs text-gray-500 mb-2">Превью цветовой схемы:</p>
-            <div
-              className="rounded-lg p-4 flex items-center justify-center gap-3"
-              style={{ backgroundColor: data.color_background || '#F5F5F5' }}
-            >
-              <div
-                className="h-12 w-24 rounded-lg shadow-sm flex items-center justify-center"
-                style={{ backgroundColor: data.color_main || '#1E40AF' }}
-              >
-                <span className="text-white text-xs font-medium">Основной</span>
-              </div>
-              <div
-                className="h-8 w-16 rounded-lg shadow-sm flex items-center justify-center"
-                style={{ backgroundColor: data.color_accent || '#3B82F6' }}
-              >
-                <span className="text-white text-xs">Акцент</span>
+            {/* Color 3 - Background (Optional) */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">
+                Фоновый цвет <span className="text-gray-400">(опционально)</span>
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={data.color_background || '#F5F5F5'}
+                  onChange={(e) => onChange({ color_background: e.target.value })}
+                  className="h-12 w-12 rounded-lg border-2 border-gray-200 cursor-pointer flex-shrink-0"
+                />
+                <input
+                  type="text"
+                  value={data.color_background || ''}
+                  onChange={(e) => onChange({ color_background: e.target.value })}
+                  className="flex-1 px-3 py-2 rounded-lg border border-gray-200 font-mono text-sm"
+                  placeholder="#F5F5F5"
+                />
+                {data.color_background && (
+                  <button
+                    type="button"
+                    onClick={() => onChange({ color_background: undefined })}
+                    className="p-2 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             </div>
+
+            {/* Color Preview - Simple color swatches */}
+            {data.color_main && (
+              <div className="pt-3 border-t border-gray-100">
+                <p className="text-xs text-gray-500 mb-2">Ваши цвета:</p>
+                <div className="flex gap-2">
+                  <div
+                    className="h-10 w-10 rounded-lg shadow-sm border border-gray-200"
+                    style={{ backgroundColor: data.color_main }}
+                    title="Основной"
+                  />
+                  {data.color_accent && (
+                    <div
+                      className="h-10 w-10 rounded-lg shadow-sm border border-gray-200"
+                      style={{ backgroundColor: data.color_accent }}
+                      title="Дополнительный"
+                    />
+                  )}
+                  {data.color_background && (
+                    <div
+                      className="h-10 w-10 rounded-lg shadow-sm border border-gray-200"
+                      style={{ backgroundColor: data.color_background }}
+                      title="Фоновый"
+                    />
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

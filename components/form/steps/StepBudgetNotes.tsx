@@ -10,11 +10,11 @@ interface StepBudgetNotesProps {
 }
 
 const BUDGET_OPTIONS: { value: BudgetRange; label: string; description: string; tier: number }[] = [
-  { value: 'under_500k', label: 'до 50 млн сум', description: 'Базовое решение', tier: 1 },
-  { value: '500k_1m', label: '50 – 100 млн сум', description: 'Стандартное оформление', tier: 2 },
-  { value: '1m_2m', label: '100 – 200 млн сум', description: 'Улучшенный дизайн', tier: 3 },
-  { value: '2m_5m', label: '200 – 500 млн сум', description: 'Премиум решение', tier: 4 },
-  { value: 'over_5m', label: 'более 500 млн сум', description: 'VIP стенд', tier: 5 },
+  { value: 'under_500k', label: 'до $5,000', description: 'Базовое решение', tier: 1 },
+  { value: '500k_1m', label: '$5,000 – $10,000', description: 'Стандартное оформление', tier: 2 },
+  { value: '1m_2m', label: '$10,000 – $20,000', description: 'Улучшенный дизайн', tier: 3 },
+  { value: '2m_5m', label: '$20,000 – $50,000', description: 'Премиум решение', tier: 4 },
+  { value: 'over_5m', label: 'более $50,000', description: 'VIP стенд', tier: 5 },
 ]
 
 export function StepBudgetNotes({ data, onChange }: StepBudgetNotesProps) {
