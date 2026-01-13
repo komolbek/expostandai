@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "AI-powered exhibition stand design application",
   "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -11,7 +14,6 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
-    "@supabase/supabase-js": "^2.90.1",
     "@tailwindcss/postcss": "^4.1.18",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
