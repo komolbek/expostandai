@@ -7,8 +7,9 @@ import { MessageBubble } from './MessageBubble'
 import { QuickReplies } from './QuickReplies'
 import { GeneratedImages } from './GeneratedImages'
 import { ContactForm } from './ContactForm'
+import { FileUpload } from './FileUpload'
 import { Button } from '@/components/ui/Button'
-import type { ChatMessage, ChatState, InquiryData } from '@/lib/types'
+import type { ChatMessage, ChatState, UploadedFile } from '@/lib/types'
 import { generateId } from '@/lib/utils'
 
 export function ChatContainer() {
@@ -252,6 +253,82 @@ export function ChatContainer() {
     }
   }
 
+  // Handle file uploads for brand materials
+  const handleBrandFilesUpload = (files: UploadedFile[]) => {
+    setChatState((prev) => ({
+      ...prev,
+      collectedData: {
+        ...prev.collectedData,
+        brand_files: files,
+      },
+      phase: 'previous_stand_upload',
+    }))
+
+    const fileNames = files.map((f) => f.name).join(', ')
+    const userMsg: ChatMessage = {
+      id: generateId(),
+      role: 'user',
+      content: `Загружено ${files.length} файл(ов): ${fileNames}`,
+      timestamp: new Date().toISOString(),
+    }
+    const aiMsg: ChatMessage = {
+      id: generateId(),
+      role: 'assistant',
+      content: 'Отлично! Теперь, если вы уже участвовали на выставках, загрузите фото вашего предыдущего стенда. Это поможет нам лучше понять ваши предпочтения.',
+      timestamp: new Date().toISOString(),
+    }
+    setMessages((prev) => [...prev, userMsg, aiMsg])
+  }
+
+  const handleBrandFilesSkip = () => {
+    setChatState((prev) => ({
+      ...prev,
+      phase: 'previous_stand_upload',
+    }))
+    const aiMsg: ChatMessage = {
+      id: generateId(),
+      role: 'assistant',
+      content: 'Хорошо! Если вы уже участвовали на выставках, загрузите фото вашего предыдущего стенда. Это поможет нам лучше понять ваши предпочтения.',
+      timestamp: new Date().toISOString(),
+    }
+    setMessages((prev) => [...prev, aiMsg])
+  }
+
+  // Handle file uploads for previous stand photos
+  const handlePreviousStandUpload = (files: UploadedFile[]) => {
+    setChatState((prev) => ({
+      ...prev,
+      collectedData: {
+        ...prev.collectedData,
+        previous_stand_files: files,
+      },
+      phase: 'budget',
+    }))
+
+    const fileNames = files.map((f) => f.name).join(', ')
+    const userMsg: ChatMessage = {
+      id: generateId(),
+      role: 'user',
+      content: `Загружено ${files.length} фото: ${fileNames}`,
+      timestamp: new Date().toISOString(),
+    }
+    setMessages((prev) => [...prev, userMsg])
+
+    // Continue to next question via API
+    sendMessage('Продолжить')
+  }
+
+  const handlePreviousStandSkip = () => {
+    setChatState((prev) => ({
+      ...prev,
+      phase: 'budget',
+    }))
+    sendMessage('Продолжить')
+  }
+
+  // Check if we're in a file upload phase
+  const isFileUploadPhase = chatState.phase === 'brand_files_upload' || chatState.phase === 'previous_stand_upload'
+
   return (
     <div className="flex h-screen flex-col bg-gray-50">
       {/* Header */}
@@ -296,6 +373,30 @@ export function ChatContainer() {
                 Это может занять 30-60 секунд
               </p>
             </div>
+          )}
+
+          {/* File Upload - Brand Materials */}
+          {chatState.phase === 'brand_files_upload' && (
+            <FileUpload
+              title="Фирменный стиль"
+              description="Загрузите логотипы и торговые марки (форматы EPS, CDR, AI), брендбук, полиграфию"
+              maxFiles={20}
+              acceptedTypes=".eps,.cdr,.ai,.pdf,.png,.jpg,.jpeg,.svg"
+              onFilesSelected={handleBrandFilesUpload}
+              onSkip={handleBrandFilesSkip}
+            />
+          )}
+
+          {/* File Upload - Previous Stand Photos */}
+          {chatState.phase === 'previous_stand_upload' && (
+            <FileUpload
+              title="Предыдущий стенд"
+              description="Если вы участвовали на выставках раньше, загрузите фото вашего стенда"
+              maxFiles={20}
+              acceptedTypes=".png,.jpg,.jpeg,.webp,.heic"
+              onFilesSelected={handlePreviousStandUpload}
+              onSkip={handlePreviousStandSkip}
+            />
           )}
 
           {/* Contact Form */}
@@ -349,7 +450,7 @@ export function ChatContainer() {
       )}
 
       {/* Input */}
-      {!chatState.isComplete && !showContactForm && (
+      {!chatState.isComplete && !showContactForm && !isFileUploadPhase && (
         <div className="border-t border-gray-200 bg-white p-4">
           <div className="mx-auto flex max-w-2xl gap-3">
             <input

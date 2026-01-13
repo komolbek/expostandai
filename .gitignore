@@ -38,3 +38,6 @@ next-env.d.ts
 
 # Local data storage
 data/
+
+# Uploaded files
+public/uploads/

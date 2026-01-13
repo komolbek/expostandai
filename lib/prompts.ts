@@ -24,11 +24,16 @@ CONVERSATION FLOW:
 11. suspended → Ask which zones they need (multi-select)
 12. zones → Ask which additional elements (multi-select)
 13. elements → Ask about brand colors
-14. brand_colors → Ask if they want to upload logo (optional)
-15. logo_upload → Ask about budget range
-16. budget → Ask about special requests or things to avoid
-17. special_requests → Show summary for confirmation
-18. summary → Mark as complete if confirmed
+14. brand_colors → Transition to file upload (brand_files_upload) - handled by frontend
+15. brand_files_upload → (handled by frontend) → previous_stand_upload
+16. previous_stand_upload → (handled by frontend) → budget
+17. budget → Ask about special requests or things to avoid
+18. special_requests → Show summary for confirmation
+19. summary → Mark as complete if confirmed
+
+NOTE: Phases brand_files_upload and previous_stand_upload are handled by the frontend.
+When user responds from brand_colors phase, set nextPhase to "brand_files_upload".
+When receiving "Продолжить" message after file uploads, continue to next logical question.
 
 REQUIRED FIELDS (must collect before summary):
 - company_name
@@ -47,6 +52,7 @@ OPTIONAL FIELDS:
 - has_suspended
 - elements
 - brand_colors
+- brand_files, previous_stand_files (handled by frontend)
 - special_requests, exclusions
 
 RESPONSE FORMAT:

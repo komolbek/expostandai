@@ -30,6 +30,15 @@ export type StandElement =
   | 'monitors_led'
   | 'plants'
 
+// Uploaded file info
+export interface UploadedFile {
+  id: string
+  name: string
+  url: string
+  type: string
+  size: number
+}
+
 // Inquiry data collected from chat
 export interface InquiryData {
   // Company info
@@ -53,6 +62,10 @@ export interface InquiryData {
   zones: StandZone[]
   elements: StandElement[]
   brand_colors: string
+
+  // File uploads
+  brand_files: UploadedFile[] // logos, brand guidelines (eps, cdr, ai)
+  previous_stand_files: UploadedFile[] // photos of previous stands
 
   // Budget and notes
   budget_range: BudgetRange
@@ -119,7 +132,8 @@ export type ChatPhase =
   | 'zones'
   | 'elements'
   | 'brand_colors'
-  | 'logo_upload'
+  | 'brand_files_upload'
+  | 'previous_stand_upload'
   | 'budget'
   | 'special_requests'
   | 'summary'
