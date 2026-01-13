@@ -66,6 +66,9 @@ export interface InquiryData {
   zones: StandZone[]
   elements: StandElement[]
   brand_colors: string
+  color_background: string
+  color_main: string
+  color_accent: string
 
   // File uploads
   brand_files: UploadedFile[] // logos, brand guidelines (eps, cdr, ai)
@@ -230,11 +233,11 @@ export const MAIN_GOALS: SelectOption[] = [
 ]
 
 export const BUDGET_RANGES: SelectOption[] = [
-  { value: 'under_500k', label: 'Under 500K RUB', labelRu: 'до 500 000 ₽' },
-  { value: '500k_1m', label: '500K-1M RUB', labelRu: '500 000 – 1 000 000 ₽' },
-  { value: '1m_2m', label: '1M-2M RUB', labelRu: '1 000 000 – 2 000 000 ₽' },
-  { value: '2m_5m', label: '2M-5M RUB', labelRu: '2 000 000 – 5 000 000 ₽' },
-  { value: 'over_5m', label: 'Over 5M RUB', labelRu: 'более 5 000 000 ₽' },
+  { value: 'under_500k', label: 'Under 50M UZS', labelRu: 'до 50 млн сум' },
+  { value: '500k_1m', label: '50M-100M UZS', labelRu: '50 – 100 млн сум' },
+  { value: '1m_2m', label: '100M-200M UZS', labelRu: '100 – 200 млн сум' },
+  { value: '2m_5m', label: '200M-500M UZS', labelRu: '200 – 500 млн сум' },
+  { value: 'over_5m', label: 'Over 500M UZS', labelRu: 'более 500 млн сум' },
 ]
 
 export const STAND_ZONES: SelectOption[] = [

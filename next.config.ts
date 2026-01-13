@@ -5,11 +5,19 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
+        hostname: '*.blob.core.windows.net',
+      },
+      {
+        protocol: 'https',
         hostname: 'oaidalleapiprodscus.blob.core.windows.net',
       },
       {
         protocol: 'https',
         hostname: 'replicate.delivery',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.replicate.delivery',
       },
       {
         protocol: 'https',
