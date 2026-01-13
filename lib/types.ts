@@ -6,11 +6,11 @@ export type StandStyle = 'hi-tech' | 'classic' | 'eco' | 'minimal'
 export type MainGoal = 'brand_awareness' | 'sales_increase' | 'trade' | 'prestige'
 
 export type BudgetRange =
-  | 'under_5000'
-  | '5000_10000'
-  | '10000_20000'
-  | '20000_50000'
-  | 'over_50000'
+  | 'under_500k'
+  | '500k_1m'
+  | '1m_2m'
+  | '2m_5m'
+  | 'over_5m'
 
 export type InquiryStatus = 'new' | 'quoted' | 'accepted' | 'rejected' | 'archived'
 
@@ -29,6 +29,10 @@ export type StandElement =
   | 'podiums'
   | 'monitors_led'
   | 'plants'
+
+// Type aliases for convenience
+export type Zone = StandZone
+export type Element = StandElement
 
 // Uploaded file info
 export interface UploadedFile {
@@ -226,11 +230,11 @@ export const MAIN_GOALS: SelectOption[] = [
 ]
 
 export const BUDGET_RANGES: SelectOption[] = [
-  { value: 'under_5000', label: 'Under $5,000', labelRu: 'до $5,000' },
-  { value: '5000_10000', label: '$5,000-$10,000', labelRu: '$5,000-10,000' },
-  { value: '10000_20000', label: '$10,000-$20,000', labelRu: '$10,000-20,000' },
-  { value: '20000_50000', label: '$20,000-$50,000', labelRu: '$20,000-50,000' },
-  { value: 'over_50000', label: 'Over $50,000', labelRu: 'Более $50,000' },
+  { value: 'under_500k', label: 'Under 500K RUB', labelRu: 'до 500 000 ₽' },
+  { value: '500k_1m', label: '500K-1M RUB', labelRu: '500 000 – 1 000 000 ₽' },
+  { value: '1m_2m', label: '1M-2M RUB', labelRu: '1 000 000 – 2 000 000 ₽' },
+  { value: '2m_5m', label: '2M-5M RUB', labelRu: '2 000 000 – 5 000 000 ₽' },
+  { value: 'over_5m', label: 'Over 5M RUB', labelRu: 'более 5 000 000 ₽' },
 ]
 
 export const STAND_ZONES: SelectOption[] = [
