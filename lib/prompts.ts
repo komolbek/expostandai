@@ -129,9 +129,12 @@ export function buildImagePrompt(data: Partial<InquiryData>, variation: 'base' |
 
   const colors = data.brand_colors || 'professional corporate colors'
   const companyName = data.company_name || 'COMPANY'
+  const businessDescription = data.products_services
+    ? `The company specializes in ${data.products_services}. `
+    : ''
 
   return `Professional photorealistic 3D render of an exhibition trade show booth for ${companyName}.
-${variationNote}${typeMap[data.stand_type as StandType] || 'exhibition booth'}, approximately ${data.area_sqm || 24} square meters floor area.
+${businessDescription}${variationNote}${typeMap[data.stand_type as StandType] || 'exhibition booth'}, approximately ${data.area_sqm || 24} square meters floor area.
 ${styleMap[data.style as StandStyle] || 'modern professional style'}.
 Height: ${data.height_meters || 3} meters${data.has_suspended ? ', with impressive suspended hanging structure above the booth' : ''}.
 ${zoneDescriptions ? `Functional zones include: ${zoneDescriptions}.` : ''}

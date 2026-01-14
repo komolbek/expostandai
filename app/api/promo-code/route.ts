@@ -47,7 +47,8 @@ export async function POST(request: NextRequest) {
     // Get client identifier
     const identifier = getClientIdentifier(request)
     const forwardedFor = request.headers.get('x-forwarded-for')
-    const ip = forwardedFor ? forwardedFor.split(',')[0].trim() : undefined
+    const ip = forwardedFor ? forwardedFor.split(',')[0].trim() : 'unknown'
+    const userAgent = request.headers.get('user-agent') || 'unknown'
 
     // Ensure tracker exists
     await getOrCreateGenerationTracker(identifier)
@@ -59,8 +60,8 @@ export async function POST(request: NextRequest) {
       validation.promoCode.max_generations
     )
 
-    // Mark the promo code as used
-    await usePromoCode(code.trim(), { ip })
+    // Mark the promo code as used with client info
+    await usePromoCode(code.trim(), { ip, userAgent })
 
     return NextResponse.json({
       valid: true,

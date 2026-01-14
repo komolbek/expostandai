@@ -1,7 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createInquiry } from '@/lib/db'
+import { createInquiry, getTrackerPromoCode, updatePromoCodePhone } from '@/lib/db'
 import { sendAllNotifications } from '@/lib/notifications'
 import type { InquirySubmitRequest } from '@/lib/types'
+
+// Helper to get client identifier (same as in other routes)
+function getClientIdentifier(request: NextRequest): string {
+  const forwardedFor = request.headers.get('x-forwarded-for')
+  const ip = forwardedFor ? forwardedFor.split(',')[0].trim() : 'unknown'
+  const userAgent = request.headers.get('user-agent') || 'unknown'
+
+  let hash = 0
+  const combined = `${ip}-${userAgent}`
+  for (let i = 0; i < combined.length; i++) {
+    const char = combined.charCodeAt(i)
+    hash = (hash << 5) - hash + char
+    hash = hash & hash
+  }
+
+  return `${ip}-${hash.toString(16)}`
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,6 +38,13 @@ export async function POST(request: NextRequest) {
         { error: 'Company name is required' },
         { status: 400 }
       )
+    }
+
+    // Check if this client used a promo code and link the phone number
+    const identifier = getClientIdentifier(request)
+    const promoCodeUsed = await getTrackerPromoCode(identifier)
+    if (promoCodeUsed) {
+      await updatePromoCodePhone(promoCodeUsed, contactInfo.phone)
     }
 
     // Insert inquiry into database

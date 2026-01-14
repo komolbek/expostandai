@@ -307,12 +307,23 @@ export function PromoCodeList() {
               {/* Usage info */}
               {promo.is_used && promo.used_at && (
                 <div className="mt-3 border-t border-gray-200 pt-3 text-sm text-gray-500">
-                  <span className="font-medium">Использован:</span>{' '}
-                  {formatDate(promo.used_at)}
-                  {promo.used_by_phone && (
-                    <span> • Телефон: {promo.used_by_phone}</span>
+                  <div className="flex flex-wrap gap-x-2 gap-y-1">
+                    <span>
+                      <span className="font-medium">Использован:</span>{' '}
+                      {formatDate(promo.used_at)}
+                    </span>
+                    {promo.used_by_phone && (
+                      <span className="text-green-600 font-medium">
+                        📞 {promo.used_by_phone}
+                      </span>
+                    )}
+                    {promo.used_by_ip && <span>• IP: {promo.used_by_ip}</span>}
+                  </div>
+                  {promo.used_by_user_agent && (
+                    <div className="mt-1 text-xs text-gray-400 truncate max-w-full" title={promo.used_by_user_agent}>
+                      Устройство: {promo.used_by_user_agent}
+                    </div>
                   )}
-                  {promo.used_by_ip && <span> • IP: {promo.used_by_ip}</span>}
                 </div>
               )}
             </div>

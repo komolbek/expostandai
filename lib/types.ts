@@ -204,6 +204,7 @@ export interface PromoCode {
   used_at?: string // When the code was used
   used_by_ip?: string // IP of the user who used it
   used_by_phone?: string // Phone number if provided
+  used_by_user_agent?: string // User agent of the client who used it
   is_used: boolean
 }
 
