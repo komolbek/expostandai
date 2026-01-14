@@ -212,14 +212,43 @@ export function getTelegramMessage(inquiry: {
   contact_phone: string
   adminUrl: string
 }): string {
+  const standTypeRu = formatStandTypeForTelegram(inquiry.stand_type)
+  const budgetRu = formatBudgetForTelegram(inquiry.budget_range)
+  const standDetails = inquiry.area_sqm
+    ? `${inquiry.area_sqm}м², ${standTypeRu}`
+    : standTypeRu || '—'
+
   return `🆕 *Новая заявка\\!*
 
-🏢 *${escapeMarkdown(inquiry.company_name)}*
-📐 ${inquiry.area_sqm || '—'}м² \\| ${escapeMarkdown(inquiry.stand_type || '—')}
-💰 ${escapeMarkdown(inquiry.budget_range || '—')}
-📞 ${escapeMarkdown(inquiry.contact_phone)}
+*Компания:* ${escapeMarkdown(inquiry.company_name)}
+*Детали стенда:* ${escapeMarkdown(standDetails)}
+*Бюджет:* ${escapeMarkdown(budgetRu)}
+*Телефон клиента:* ${escapeMarkdown(inquiry.contact_phone)}
 
-🔗 [Открыть в панели](${inquiry.adminUrl})`
+🔗 [Ссылка на заявку в админке](${inquiry.adminUrl})`
+}
+
+function formatStandTypeForTelegram(type?: string): string {
+  if (!type) return '—'
+  const typeMap: Record<string, string> = {
+    'linear': 'Линейный',
+    'corner': 'Угловой',
+    'peninsula': 'Полуостров',
+    'island': 'Остров',
+  }
+  return typeMap[type] || type
+}
+
+function formatBudgetForTelegram(range?: string): string {
+  if (!range) return '—'
+  const budgetMap: Record<string, string> = {
+    'under_500k': 'до $5,000',
+    '500k_1m': '$5,000 – $10,000',
+    '1m_2m': '$10,000 – $20,000',
+    '2m_5m': '$20,000 – $50,000',
+    'over_5m': 'более $50,000',
+  }
+  return budgetMap[range] || range
 }
 
 function escapeMarkdown(text: string): string {

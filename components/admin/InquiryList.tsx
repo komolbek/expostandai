@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { formatDateTime, formatBudget, formatStandType } from '@/lib/utils'
 import type { Inquiry, InquiryStatus } from '@/lib/types'
-import { ChevronLeft, ChevronRight, RefreshCw, Building, Calendar, DollarSign } from 'lucide-react'
+import { ChevronLeft, ChevronRight, RefreshCw, Building, Calendar, DollarSign, CheckCircle } from 'lucide-react'
 
 const statusFilters: Array<{ value: InquiryStatus | 'all'; label: string }> = [
   { value: 'all', label: 'Все' },
@@ -156,13 +156,25 @@ export function InquiryList() {
                 </div>
 
                 {inquiry.generated_images && inquiry.generated_images.length > 0 && (
-                  <div className="flex -space-x-2">
-                    {inquiry.generated_images.slice(0, 3).map((_, i) => (
-                      <div
-                        key={i}
-                        className="h-12 w-12 rounded-lg bg-gray-200 ring-2 ring-white"
-                      />
-                    ))}
+                  <div className="flex items-center gap-2">
+                    {inquiry.selected_image_index !== undefined && inquiry.selected_image_index !== null && (
+                      <div className="flex items-center gap-1 text-green-600">
+                        <CheckCircle className="h-4 w-4" />
+                        <span className="text-xs font-medium">Выбран</span>
+                      </div>
+                    )}
+                    <div className="flex -space-x-2">
+                      {inquiry.generated_images.slice(0, 3).map((_, i) => (
+                        <div
+                          key={i}
+                          className={`h-12 w-12 rounded-lg ring-2 ring-white ${
+                            inquiry.selected_image_index === i
+                              ? 'bg-primary-200 ring-primary-500'
+                              : 'bg-gray-200'
+                          }`}
+                        />
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

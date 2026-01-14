@@ -284,27 +284,85 @@ export function InquiryDetail({ inquiryId }: InquiryDetailProps) {
           {inquiry.generated_images && inquiry.generated_images.length > 0 && (
             <section className="card">
               <h2 className="mb-4 text-lg font-semibold text-gray-900">
-                Сгенерированные дизайны
+                {inquiry.selected_image_index !== undefined && inquiry.selected_image_index !== null
+                  ? 'Выбранный клиентом дизайн'
+                  : 'Сгенерированные дизайны'}
               </h2>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {inquiry.generated_images.map((url, i) => (
+
+              {/* Show selected design prominently */}
+              {inquiry.selected_image_index !== undefined && inquiry.selected_image_index !== null && (
+                <div className="mb-6">
                   <a
-                    key={i}
-                    href={url}
+                    href={inquiry.generated_images[inquiry.selected_image_index]}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="aspect-video overflow-hidden rounded-lg bg-gray-100"
+                    className="block aspect-video overflow-hidden rounded-xl bg-gray-100 ring-4 ring-primary-500 ring-offset-2"
                   >
                     <Image
-                      src={url}
-                      alt={`Дизайн ${i + 1}`}
-                      width={400}
-                      height={225}
+                      src={inquiry.generated_images[inquiry.selected_image_index]}
+                      alt="Выбранный дизайн"
+                      width={800}
+                      height={450}
                       className="h-full w-full object-cover"
                     />
                   </a>
-                ))}
-              </div>
+                  <p className="mt-2 text-center text-sm font-medium text-primary-600">
+                    Клиент выбрал этот вариант
+                  </p>
+                </div>
+              )}
+
+              {/* Show other designs as smaller thumbnails */}
+              {inquiry.generated_images.length > 1 && (
+                <div>
+                  <p className="mb-2 text-sm text-gray-500">
+                    {inquiry.selected_image_index !== undefined && inquiry.selected_image_index !== null
+                      ? 'Другие варианты:'
+                      : 'Клиент не выбрал предпочтительный вариант:'}
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {inquiry.generated_images.map((url, i) => {
+                      const isSelected = inquiry.selected_image_index === i
+                      if (isSelected && inquiry.selected_image_index !== undefined) return null
+                      return (
+                        <a
+                          key={i}
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="aspect-video overflow-hidden rounded-lg bg-gray-100 opacity-70 hover:opacity-100 transition-opacity"
+                        >
+                          <Image
+                            src={url}
+                            alt={`Дизайн ${i + 1}`}
+                            width={300}
+                            height={169}
+                            className="h-full w-full object-cover"
+                          />
+                        </a>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* If only one image and no selection made, show it */}
+              {inquiry.generated_images.length === 1 && (inquiry.selected_image_index === undefined || inquiry.selected_image_index === null) && (
+                <a
+                  href={inquiry.generated_images[0]}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block aspect-video overflow-hidden rounded-lg bg-gray-100"
+                >
+                  <Image
+                    src={inquiry.generated_images[0]}
+                    alt="Дизайн 1"
+                    width={400}
+                    height={225}
+                    className="h-full w-full object-cover"
+                  />
+                </a>
+              )}
             </section>
           )}
         </div>
