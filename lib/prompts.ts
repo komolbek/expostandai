@@ -137,7 +137,7 @@ export function buildImagePrompt(data: Partial<InquiryData>, variation: 'base' |
   return `Professional photorealistic 3D render of an exhibition trade show booth.
 ${businessDescription}${variationNote}${typeMap[data.stand_type as StandType] || 'exhibition booth'}, approximately ${data.area_sqm || 24} square meters floor area.
 ${styleMap[data.style as StandStyle] || 'modern professional style'}.
-Height: ${data.height_meters || 3} meters${data.has_suspended ? ', with impressive suspended hanging structure above the booth' : ''}.
+Exact Height of the stand: ${data.height_meters || 3} meters (follow this preciselly), ${data.has_suspended ? ', with impressive suspended hanging structure above the booth' : ''}.
 ${zoneDescriptions ? `Functional zones include: ${zoneDescriptions}.` : ''}
 ${elementDescriptions ? `Features: ${elementDescriptions}.` : ''}
 Brand colors: ${colors}. The booth has a large illuminated sign displaying the company name "${companyName}" in bold sans-serif capital letters, clearly readable and correctly spelled.
