@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { ArrowLeft, ArrowRight, Check, Loader2, Building2, Ruler, Palette, LayoutGrid, Upload, Wallet, User, Sparkles, Wand2, AlertCircle } from 'lucide-react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { ArrowLeft, ArrowRight, Check, Loader2, Building2, Ruler, Palette, LayoutGrid, Upload, Wallet, User, Sparkles, Wand2, AlertCircle, Ticket } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { StepCompanyInfo } from './steps/StepCompanyInfo'
@@ -12,9 +12,10 @@ import { StepFilesUpload } from './steps/StepFilesUpload'
 import { StepBudgetNotes } from './steps/StepBudgetNotes'
 import { StepContactInfo } from './steps/StepContactInfo'
 import { GeneratedImages } from '@/components/chat/GeneratedImages'
+import { Input } from '@/components/ui/Input'
 import type { InquiryData, ContactInfo } from '@/lib/types'
 
-const MAX_GENERATION_REQUESTS = 2
+const DEFAULT_MAX_GENERATIONS = 2
 
 const STEPS = [
   { id: 'company', title: 'Компания', icon: Building2, color: 'from-blue-500 to-blue-600' },
@@ -32,16 +33,47 @@ export function StandForm() {
   const [formData, setFormData] = useState<Partial<InquiryData>>({})
   const [contactInfo, setContactInfo] = useState<ContactInfo>({ name: '', phone: '' })
 
-  // Generation state
+  // Generation state (now server-tracked)
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedImages, setGeneratedImages] = useState<string[]>([])
-  const [generationCount, setGenerationCount] = useState(0)
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
 
+  // Server-side generation tracking
+  const [remainingGenerations, setRemainingGenerations] = useState(DEFAULT_MAX_GENERATIONS)
+  const [maxGenerations, setMaxGenerations] = useState(DEFAULT_MAX_GENERATIONS)
+  const [isLoadingStatus, setIsLoadingStatus] = useState(true)
+
+  // Promo code state
+  const [promoCode, setPromoCode] = useState('')
+  const [isApplyingPromo, setIsApplyingPromo] = useState(false)
+  const [promoError, setPromoError] = useState<string | null>(null)
+  const [promoApplied, setPromoApplied] = useState(false)
+
   // AbortController for canceling generation
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  // Fetch generation status from server
+  const fetchGenerationStatus = useCallback(async () => {
+    try {
+      const response = await fetch('/api/generation-status')
+      if (response.ok) {
+        const data = await response.json()
+        setRemainingGenerations(data.remaining)
+        setMaxGenerations(data.max)
+      }
+    } catch (error) {
+      console.error('Failed to fetch generation status:', error)
+    } finally {
+      setIsLoadingStatus(false)
+    }
+  }, [])
+
+  // Fetch status on mount
+  useEffect(() => {
+    fetchGenerationStatus()
+  }, [fetchGenerationStatus])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -56,7 +88,38 @@ export function StandForm() {
     setFormData((prev) => ({ ...prev, ...data }))
   }
 
-  const remainingGenerations = MAX_GENERATION_REQUESTS - generationCount
+  // Apply promo code
+  const handleApplyPromoCode = async () => {
+    if (!promoCode.trim()) return
+
+    setIsApplyingPromo(true)
+    setPromoError(null)
+
+    try {
+      const response = await fetch('/api/promo-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: promoCode.trim() }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setPromoError(data.error || 'Ошибка применения промокода')
+        return
+      }
+
+      // Update generation limits
+      setMaxGenerations(data.max_generations)
+      setRemainingGenerations(data.max_generations)
+      setPromoApplied(true)
+      setPromoError(null)
+    } catch (error) {
+      setPromoError('Ошибка сети. Попробуйте ещё раз.')
+    } finally {
+      setIsApplyingPromo(false)
+    }
+  }
 
   const nextStep = () => {
     if (currentStep < STEPS.length - 1) {
@@ -91,11 +154,26 @@ export function StandForm() {
         signal: abortControllerRef.current.signal,
       })
 
-      if (!response.ok) throw new Error('Failed to generate designs')
-
       const data = await response.json()
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          // Limit exceeded - update from server
+          setRemainingGenerations(0)
+          alert('Лимит генераций исчерпан.')
+          return
+        }
+        throw new Error(data.error || 'Failed to generate designs')
+      }
+
       setGeneratedImages(data.images.map((img: { url: string }) => img.url))
-      setGenerationCount((prev) => prev + 1)
+      // Update remaining from server response
+      if (typeof data.remaining === 'number') {
+        setRemainingGenerations(data.remaining)
+      }
+      if (typeof data.max === 'number') {
+        setMaxGenerations(data.max)
+      }
       setSelectedImageIndex(null) // Reset selection when regenerating
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
@@ -173,46 +251,89 @@ export function StandForm() {
               <p className="mt-1 text-gray-500">Сгенерируйте предварительные дизайны вашего стенда с помощью ИИ</p>
             </div>
 
-            {/* Generation Limit Warning */}
-            <div className={`rounded-xl p-4 flex items-start gap-3 ${
-              remainingGenerations === 0
-                ? 'bg-red-50 border border-red-200'
-                : remainingGenerations === 1
-                ? 'bg-amber-50 border border-amber-200'
-                : 'bg-blue-50 border border-blue-200'
-            }`}>
-              <AlertCircle className={`h-5 w-5 flex-shrink-0 mt-0.5 ${
-                remainingGenerations === 0
-                  ? 'text-red-500'
-                  : remainingGenerations === 1
-                  ? 'text-amber-500'
-                  : 'text-blue-500'
-              }`} />
-              <div>
-                <p className={`font-medium ${
-                  remainingGenerations === 0
-                    ? 'text-red-700'
-                    : remainingGenerations === 1
-                    ? 'text-amber-700'
-                    : 'text-blue-700'
-                }`}>
-                  {remainingGenerations === 0
-                    ? 'Лимит генераций исчерпан'
-                    : `Осталось генераций: ${remainingGenerations} из ${MAX_GENERATION_REQUESTS}`}
-                </p>
-                <p className={`text-sm mt-0.5 ${
-                  remainingGenerations === 0
-                    ? 'text-red-600'
-                    : remainingGenerations === 1
-                    ? 'text-amber-600'
-                    : 'text-blue-600'
-                }`}>
-                  {remainingGenerations === 0
-                    ? 'Вы можете отправить заявку с текущими дизайнами или без них'
-                    : 'Каждая генерация создаёт 3 варианта дизайна'}
-                </p>
+            {/* Promo Code Input */}
+            {!promoApplied && !isLoadingStatus && (
+              <div className="rounded-xl bg-gradient-to-r from-purple-50 to-indigo-50 p-4 border border-purple-100">
+                <div className="flex items-center gap-2 mb-3">
+                  <Ticket className="h-5 w-5 text-purple-600" />
+                  <span className="font-medium text-purple-900">Есть промокод?</span>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                    placeholder="EXPO-XXXXXX"
+                    className="flex-1"
+                    disabled={isApplyingPromo}
+                  />
+                  <Button
+                    onClick={handleApplyPromoCode}
+                    disabled={!promoCode.trim() || isApplyingPromo}
+                    loading={isApplyingPromo}
+                    size="sm"
+                  >
+                    Применить
+                  </Button>
+                </div>
+                {promoError && (
+                  <p className="mt-2 text-sm text-red-600">{promoError}</p>
+                )}
               </div>
-            </div>
+            )}
+
+            {/* Promo Applied Success */}
+            {promoApplied && (
+              <div className="rounded-xl bg-green-50 p-4 border border-green-200 flex items-center gap-3">
+                <Check className="h-5 w-5 text-green-600" />
+                <div>
+                  <p className="font-medium text-green-800">Промокод применён!</p>
+                  <p className="text-sm text-green-600">Вам доступно {maxGenerations} генераций</p>
+                </div>
+              </div>
+            )}
+
+            {/* Generation Limit Warning */}
+            {!isLoadingStatus && (
+              <div className={`rounded-xl p-4 flex items-start gap-3 ${
+                remainingGenerations === 0
+                  ? 'bg-red-50 border border-red-200'
+                  : remainingGenerations === 1
+                  ? 'bg-amber-50 border border-amber-200'
+                  : 'bg-blue-50 border border-blue-200'
+              }`}>
+                <AlertCircle className={`h-5 w-5 flex-shrink-0 mt-0.5 ${
+                  remainingGenerations === 0
+                    ? 'text-red-500'
+                    : remainingGenerations === 1
+                    ? 'text-amber-500'
+                    : 'text-blue-500'
+                }`} />
+                <div>
+                  <p className={`font-medium ${
+                    remainingGenerations === 0
+                      ? 'text-red-700'
+                      : remainingGenerations === 1
+                      ? 'text-amber-700'
+                      : 'text-blue-700'
+                  }`}>
+                    {remainingGenerations === 0
+                      ? 'Лимит генераций исчерпан'
+                      : `Осталось генераций: ${remainingGenerations} из ${maxGenerations}`}
+                  </p>
+                  <p className={`text-sm mt-0.5 ${
+                    remainingGenerations === 0
+                      ? 'text-red-600'
+                      : remainingGenerations === 1
+                      ? 'text-amber-600'
+                      : 'text-blue-600'
+                  }`}>
+                    {remainingGenerations === 0
+                      ? 'Вы можете отправить заявку с текущими дизайнами или без них'
+                      : 'Каждая генерация создаёт 3 варианта дизайна'}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Summary Card */}
             <div className="rounded-xl bg-gradient-to-br from-purple-50 to-fuchsia-50 p-5 border border-purple-100">

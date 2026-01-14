@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
-import { LogOut, Home, List } from 'lucide-react'
+import { LogOut, Home, List, Ticket } from 'lucide-react'
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -20,6 +20,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   const navItems = [
     { href: '/admin', label: 'Заявки', icon: List },
+    { href: '/admin/promo-codes', label: 'Промокоды', icon: Ticket },
   ]
 
   return (

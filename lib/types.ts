@@ -194,6 +194,25 @@ export interface InquiryListResponse {
   totalPages: number
 }
 
+// Promo code types
+export interface PromoCode {
+  id: string
+  code: string
+  max_generations: number // Usually 5 for promo users
+  created_at: string
+  expires_at?: string // Optional expiration date
+  used_at?: string // When the code was used
+  used_by_ip?: string // IP of the user who used it
+  used_by_phone?: string // Phone number if provided
+  is_used: boolean
+}
+
+export interface PromoCodeValidationResult {
+  valid: boolean
+  error?: string
+  max_generations?: number
+}
+
 export interface InquiryFile {
   id: string
   inquiry_id: string

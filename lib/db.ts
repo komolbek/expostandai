@@ -1,6 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-import type { Inquiry, InquiryStatus } from './types'
+import type { Inquiry, InquiryStatus, PromoCode } from './types'
 
 // Local JSON storage for development
 // For production on Railway, replace with PostgreSQL queries
@@ -8,6 +8,8 @@ import type { Inquiry, InquiryStatus } from './types'
 const DATA_DIR = path.join(process.cwd(), 'data')
 const INQUIRIES_FILE = path.join(DATA_DIR, 'inquiries.json')
 const ADMIN_USERS_FILE = path.join(DATA_DIR, 'admin_users.json')
+const PROMO_CODES_FILE = path.join(DATA_DIR, 'promo_codes.json')
+const GENERATION_TRACKING_FILE = path.join(DATA_DIR, 'generation_tracking.json')
 
 // Ensure data directory exists
 function ensureDataDir() {
@@ -241,4 +243,185 @@ export async function getAdminById(id: string): Promise<AdminUser | null> {
 
 export function verifyPassword(password: string, hash: string): boolean {
   return simpleHash(password) === hash
+}
+
+// ============ PROMO CODES ============
+
+// Generate a random promo code like "EXPO-A7X9K2"
+function generatePromoCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // Avoid ambiguous chars like 0, O, 1, I
+  let code = ''
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return `EXPO-${code}`
+}
+
+export async function createPromoCode(options?: {
+  expires_at?: string
+  max_generations?: number
+}): Promise<PromoCode> {
+  const promoCodes = readJsonFile<PromoCode[]>(PROMO_CODES_FILE, [])
+
+  // Ensure unique code
+  let code = generatePromoCode()
+  while (promoCodes.some((p) => p.code === code)) {
+    code = generatePromoCode()
+  }
+
+  const newPromoCode: PromoCode = {
+    id: generateUUID(),
+    code,
+    max_generations: options?.max_generations ?? 5,
+    created_at: new Date().toISOString(),
+    expires_at: options?.expires_at,
+    is_used: false,
+  }
+
+  promoCodes.push(newPromoCode)
+  writeJsonFile(PROMO_CODES_FILE, promoCodes)
+
+  return newPromoCode
+}
+
+export async function getPromoCodes(): Promise<PromoCode[]> {
+  const promoCodes = readJsonFile<PromoCode[]>(PROMO_CODES_FILE, [])
+  // Sort by created_at descending
+  return promoCodes.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+}
+
+export async function getPromoCodeByCode(code: string): Promise<PromoCode | null> {
+  const promoCodes = readJsonFile<PromoCode[]>(PROMO_CODES_FILE, [])
+  return promoCodes.find((p) => p.code.toUpperCase() === code.toUpperCase()) || null
+}
+
+export async function validatePromoCode(code: string): Promise<{
+  valid: boolean
+  error?: string
+  promoCode?: PromoCode
+}> {
+  const promoCode = await getPromoCodeByCode(code)
+
+  if (!promoCode) {
+    return { valid: false, error: 'Промокод не найден' }
+  }
+
+  if (promoCode.is_used) {
+    return { valid: false, error: 'Промокод уже использован' }
+  }
+
+  if (promoCode.expires_at && new Date(promoCode.expires_at) < new Date()) {
+    return { valid: false, error: 'Срок действия промокода истёк' }
+  }
+
+  return { valid: true, promoCode }
+}
+
+export async function usePromoCode(
+  code: string,
+  usageInfo: { ip?: string; phone?: string }
+): Promise<PromoCode | null> {
+  const promoCodes = readJsonFile<PromoCode[]>(PROMO_CODES_FILE, [])
+  const index = promoCodes.findIndex((p) => p.code.toUpperCase() === code.toUpperCase())
+
+  if (index === -1) return null
+
+  promoCodes[index] = {
+    ...promoCodes[index],
+    is_used: true,
+    used_at: new Date().toISOString(),
+    used_by_ip: usageInfo.ip,
+    used_by_phone: usageInfo.phone,
+  }
+
+  writeJsonFile(PROMO_CODES_FILE, promoCodes)
+  return promoCodes[index]
+}
+
+export async function deletePromoCode(id: string): Promise<boolean> {
+  const promoCodes = readJsonFile<PromoCode[]>(PROMO_CODES_FILE, [])
+  const index = promoCodes.findIndex((p) => p.id === id)
+
+  if (index === -1) return false
+
+  promoCodes.splice(index, 1)
+  writeJsonFile(PROMO_CODES_FILE, promoCodes)
+  return true
+}
+
+// ============ GENERATION TRACKING ============
+
+interface GenerationTracker {
+  identifier: string // IP address or fingerprint
+  generation_count: number
+  max_generations: number
+  promo_code_used?: string
+  last_generation_at: string
+  created_at: string
+}
+
+export async function getOrCreateGenerationTracker(
+  identifier: string,
+  defaultMaxGenerations: number = 2
+): Promise<GenerationTracker> {
+  const trackers = readJsonFile<GenerationTracker[]>(GENERATION_TRACKING_FILE, [])
+  let tracker = trackers.find((t) => t.identifier === identifier)
+
+  if (!tracker) {
+    tracker = {
+      identifier,
+      generation_count: 0,
+      max_generations: defaultMaxGenerations,
+      created_at: new Date().toISOString(),
+      last_generation_at: new Date().toISOString(),
+    }
+    trackers.push(tracker)
+    writeJsonFile(GENERATION_TRACKING_FILE, trackers)
+  }
+
+  return tracker
+}
+
+export async function incrementGenerationCount(identifier: string): Promise<GenerationTracker | null> {
+  const trackers = readJsonFile<GenerationTracker[]>(GENERATION_TRACKING_FILE, [])
+  const index = trackers.findIndex((t) => t.identifier === identifier)
+
+  if (index === -1) return null
+
+  trackers[index].generation_count += 1
+  trackers[index].last_generation_at = new Date().toISOString()
+
+  writeJsonFile(GENERATION_TRACKING_FILE, trackers)
+  return trackers[index]
+}
+
+export async function applyPromoCodeToTracker(
+  identifier: string,
+  promoCode: string,
+  maxGenerations: number
+): Promise<GenerationTracker | null> {
+  const trackers = readJsonFile<GenerationTracker[]>(GENERATION_TRACKING_FILE, [])
+  const index = trackers.findIndex((t) => t.identifier === identifier)
+
+  if (index === -1) return null
+
+  trackers[index].promo_code_used = promoCode
+  trackers[index].max_generations = maxGenerations
+
+  writeJsonFile(GENERATION_TRACKING_FILE, trackers)
+  return trackers[index]
+}
+
+export async function canGenerate(identifier: string): Promise<{
+  allowed: boolean
+  remaining: number
+  max: number
+}> {
+  const tracker = await getOrCreateGenerationTracker(identifier)
+  const remaining = tracker.max_generations - tracker.generation_count
+  return {
+    allowed: remaining > 0,
+    remaining: Math.max(0, remaining),
+    max: tracker.max_generations,
+  }
 }
