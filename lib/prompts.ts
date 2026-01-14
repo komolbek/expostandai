@@ -128,18 +128,19 @@ export function buildImagePrompt(data: Partial<InquiryData>, variation: 'base' |
   }
 
   const colors = data.brand_colors || 'professional corporate colors'
-  const companyName = data.company_name || 'COMPANY'
+  // Use uppercase for better text rendering in DALL-E
+  const companyName = (data.company_name || 'COMPANY').toUpperCase()
   const businessDescription = data.products_services
     ? `The company specializes in ${data.products_services}. `
     : ''
 
-  return `Professional photorealistic 3D render of an exhibition trade show booth for ${companyName}.
+  return `Professional photorealistic 3D render of an exhibition trade show booth.
 ${businessDescription}${variationNote}${typeMap[data.stand_type as StandType] || 'exhibition booth'}, approximately ${data.area_sqm || 24} square meters floor area.
 ${styleMap[data.style as StandStyle] || 'modern professional style'}.
 Height: ${data.height_meters || 3} meters${data.has_suspended ? ', with impressive suspended hanging structure above the booth' : ''}.
 ${zoneDescriptions ? `Functional zones include: ${zoneDescriptions}.` : ''}
 ${elementDescriptions ? `Features: ${elementDescriptions}.` : ''}
-Brand colors: ${colors}. Large "${companyName}" company signage prominently displayed.
+Brand colors: ${colors}. The booth has a large illuminated sign displaying the company name "${companyName}" in bold sans-serif capital letters, clearly readable and correctly spelled.
 Trade show exhibition hall environment with professional lighting, neighboring booths visible in background, visitors walking by for scale.
 Photorealistic architectural visualization quality, high detail, professional photography style, well-lit, no watermarks.`
 }
