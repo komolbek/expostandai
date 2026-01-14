@@ -36,6 +36,7 @@ export function StandForm() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedImages, setGeneratedImages] = useState<string[]>([])
   const [generationCount, setGenerationCount] = useState(0)
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
 
@@ -95,6 +96,7 @@ export function StandForm() {
       const data = await response.json()
       setGeneratedImages(data.images.map((img: { url: string }) => img.url))
       setGenerationCount((prev) => prev + 1)
+      setSelectedImageIndex(null) // Reset selection when regenerating
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         console.log('Generation was cancelled')
@@ -125,6 +127,7 @@ export function StandForm() {
           contactInfo,
           inquiryData: formData,
           generatedImages,
+          selectedImageIndex,
           conversationLog: [],
         }),
       })
@@ -273,7 +276,11 @@ export function StandForm() {
 
             {generatedImages.length > 0 && !isGenerating && (
               <div>
-                <GeneratedImages images={generatedImages} />
+                <GeneratedImages
+                  images={generatedImages}
+                  selectedIndex={selectedImageIndex}
+                  onSelect={setSelectedImageIndex}
+                />
                 {remainingGenerations > 0 && (
                   <div className="mt-4 text-center">
                     <Button
@@ -439,14 +446,19 @@ export function StandForm() {
           <div className="flex-1" />
 
           {isLastStep ? (
-            <Button
-              onClick={handleSubmit}
-              disabled={!isStepValid() || isSubmitting || isGenerating}
-              leftIcon={isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-              className="bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90 border-0"
-            >
-              {isSubmitting ? 'Отправка...' : generatedImages.length > 0 ? 'Отправить заявку' : 'Отправить без дизайна'}
-            </Button>
+            <div className="flex flex-col items-end gap-1">
+              {generatedImages.length > 0 && selectedImageIndex === null && (
+                <span className="text-sm text-orange-600">Выберите вариант дизайна</span>
+              )}
+              <Button
+                onClick={handleSubmit}
+                disabled={!isStepValid() || isSubmitting || isGenerating || (generatedImages.length > 0 && selectedImageIndex === null)}
+                leftIcon={isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                className="bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90 border-0"
+              >
+                {isSubmitting ? 'Отправка...' : generatedImages.length > 0 ? 'Отправить заявку' : 'Отправить без дизайна'}
+              </Button>
+            </div>
           ) : (
             <Button
               onClick={nextStep}
