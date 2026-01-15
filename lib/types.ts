@@ -58,10 +58,14 @@ export interface InquiryData {
   stand_type: StandType
   staff_count: number
 
+  // Stand dimensions (in meters)
+  width_meters: number
+  length_meters: number
+  height_meters: number
+
   // Design preferences
   main_goal: MainGoal
   style: StandStyle
-  height_meters: number
   has_suspended: boolean
   zones: StandZone[]
   elements: StandElement[]

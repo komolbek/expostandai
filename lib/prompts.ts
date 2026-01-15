@@ -172,10 +172,16 @@ export function buildImagePrompt(
     brandingDescription = `The booth has a large illuminated sign displaying the company name "${companyName}" in bold sans-serif capital letters, clearly readable and correctly spelled. The company name is the primary branding element on the main fascia/header.`
   }
 
+  // Build dimensions description
+  const width = data.width_meters || 3
+  const length = data.length_meters || 3
+  const height = data.height_meters || 3
+  const dimensionsDescription = `EXACT STAND DIMENSIONS (follow precisely): ${width}m wide (front) × ${length}m deep × ${height}m tall.`
+
   return `Professional photorealistic 3D render of an exhibition trade show booth.
 ${businessDescription}${variationNote}${typeMap[data.stand_type as StandType] || 'exhibition booth'}, approximately ${data.area_sqm || 24} square meters floor area.
 ${styleMap[data.style as StandStyle] || 'modern professional style'}.
-Exact Height of the stand: ${data.height_meters || 3} meters (follow this preciselly), ${data.has_suspended ? ', with impressive suspended hanging structure above the booth' : ''}.
+${dimensionsDescription}${data.has_suspended ? ' With impressive suspended hanging structure above the booth.' : ''}
 ${zoneDescriptions ? `Functional zones include: ${zoneDescriptions}.` : ''}
 ${elementDescriptions ? `Features: ${elementDescriptions}.` : ''}
 Brand colors: ${colors}. ${brandingDescription}
