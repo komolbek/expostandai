@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Palette, Cpu, Leaf, Minimize2, Target, TrendingUp, Store, Award, ArrowUpDown, Pipette, Plus, X } from 'lucide-react'
+import { Palette, Cpu, Leaf, Minimize2, Target, TrendingUp, Store, Award, Pipette, Plus, X } from 'lucide-react'
 import type { InquiryData, StandStyle, MainGoal } from '@/lib/types'
 
 interface StepDesignPrefsProps {
@@ -25,9 +25,6 @@ const GOAL_OPTIONS: { value: MainGoal; label: string; icon: React.ReactNode }[] 
 
 export function StepDesignPrefs({ data, onChange }: StepDesignPrefsProps) {
   const [showCustomColors, setShowCustomColors] = useState(false)
-
-  const heightValue = data.height_meters || 3
-  const heightPercent = ((heightValue - 2.5) / 2) * 100
 
   // Check if any colors are set
   const hasColors = data.color_main || data.color_accent || data.color_background
@@ -87,60 +84,6 @@ export function StepDesignPrefs({ data, onChange }: StepDesignPrefsProps) {
               <span className="font-medium text-sm">{option.label}</span>
             </button>
           ))}
-        </div>
-      </div>
-
-      {/* Height Slider */}
-      <div>
-        <label className="mb-3 block text-sm font-medium text-gray-700">
-          <span className="flex items-center gap-2">
-            <ArrowUpDown className="h-4 w-4 text-gray-400" />
-            Высота стенда <span className="text-red-500">*</span>
-          </span>
-        </label>
-        <div className="rounded-xl border-2 border-gray-200 p-4 bg-gradient-to-br from-gray-50 to-slate-50">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm text-gray-500">2.5 м</span>
-            <span className="text-2xl font-bold text-blue-600">{heightValue} м</span>
-            <span className="text-sm text-gray-500">4.5 м</span>
-          </div>
-          <div className="relative">
-            <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full transition-all"
-                style={{ width: `${heightPercent}%` }}
-              />
-            </div>
-            <input
-              type="range"
-              min="2.5"
-              max="4.5"
-              step="0.1"
-              value={heightValue}
-              onChange={(e) => onChange({ height_meters: parseFloat(e.target.value) })}
-              className="absolute inset-0 w-full h-3 opacity-0 cursor-pointer"
-            />
-            <div
-              className="absolute top-1/2 -translate-y-1/2 w-6 h-6 bg-white border-2 border-blue-500 rounded-full shadow-lg pointer-events-none transition-all"
-              style={{ left: `calc(${heightPercent}% - 12px)` }}
-            />
-          </div>
-          <div className="flex justify-between mt-2">
-            {[2.5, 3, 3.5, 4, 4.5].map((h) => (
-              <button
-                key={h}
-                type="button"
-                onClick={() => onChange({ height_meters: h })}
-                className={`text-xs px-2 py-1 rounded-md transition-all ${
-                  Math.abs(heightValue - h) < 0.05
-                    ? 'bg-blue-500 text-white font-medium'
-                    : 'text-gray-500 hover:bg-gray-200'
-                }`}
-              >
-                {h}м
-              </button>
-            ))}
-          </div>
         </div>
       </div>
 

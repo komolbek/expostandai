@@ -11,7 +11,14 @@ const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads')
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
-    const files = formData.getAll('files') as File[]
+    // Support both 'file' (single) and 'files' (multiple) field names
+    let files = formData.getAll('files') as File[]
+    if (!files || files.length === 0) {
+      const singleFile = formData.get('file') as File | null
+      if (singleFile) {
+        files = [singleFile]
+      }
+    }
     const inquiryId = formData.get('inquiryId') as string || 'temp'
 
     if (!files || files.length === 0) {
@@ -56,8 +63,12 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Return both formats for compatibility
+    // 'url' for single file upload (frontend expects this)
+    // 'files' for multiple file uploads
     return NextResponse.json({
       success: true,
+      url: uploadedFiles[0]?.url, // For single file compatibility
       files: uploadedFiles,
     })
   } catch (error) {

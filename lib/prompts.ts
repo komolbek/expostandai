@@ -134,13 +134,21 @@ export function buildImagePrompt(data: Partial<InquiryData>, variation: 'base' |
     ? `The company specializes in ${data.products_services}. `
     : ''
 
+  // Check if client has uploaded a company logo
+  const hasCompanyLogo = data.brand_files && data.brand_files.length > 0
+
+  // If logo is uploaded, focus on logo placement; otherwise, focus on company name text
+  const brandingDescription = hasCompanyLogo
+    ? `The booth prominently features the company logo on the main fascia/header, reception counter, and key visible surfaces. The logo should be the primary branding element, displayed large and illuminated. Company name "${companyName}" appears as secondary text below or near the logo.`
+    : `The booth has a large illuminated sign displaying the company name "${companyName}" in bold sans-serif capital letters, clearly readable and correctly spelled. The company name is the primary branding element on the main fascia/header.`
+
   return `Professional photorealistic 3D render of an exhibition trade show booth.
 ${businessDescription}${variationNote}${typeMap[data.stand_type as StandType] || 'exhibition booth'}, approximately ${data.area_sqm || 24} square meters floor area.
 ${styleMap[data.style as StandStyle] || 'modern professional style'}.
 Exact Height of the stand: ${data.height_meters || 3} meters (follow this preciselly), ${data.has_suspended ? ', with impressive suspended hanging structure above the booth' : ''}.
 ${zoneDescriptions ? `Functional zones include: ${zoneDescriptions}.` : ''}
 ${elementDescriptions ? `Features: ${elementDescriptions}.` : ''}
-Brand colors: ${colors}. The booth has a large illuminated sign displaying the company name "${companyName}" in bold sans-serif capital letters, clearly readable and correctly spelled.
+Brand colors: ${colors}. ${brandingDescription}
 Trade show exhibition hall environment with professional lighting, neighboring booths visible in background, visitors walking by for scale.
 Photorealistic architectural visualization quality, high detail, professional photography style, well-lit, no watermarks.`
 }

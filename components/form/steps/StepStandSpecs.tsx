@@ -1,6 +1,6 @@
 'use client'
 
-import { Square, CornerDownRight, Hexagon, Box, Users } from 'lucide-react'
+import { Square, CornerDownRight, Hexagon, Box, Users, ArrowUpDown } from 'lucide-react'
 import type { InquiryData, StandType } from '@/lib/types'
 
 interface StepStandSpecsProps {
@@ -15,6 +15,14 @@ const AREA_OPTIONS = [
   { value: 24, label: '24 м²', description: 'Стандартный' },
   { value: 36, label: '36 м²', description: 'Большой' },
   { value: 50, label: '50+ м²', description: 'Премиум' },
+]
+
+const HEIGHT_OPTIONS = [
+  { value: 2.5, label: '2.5 м', description: 'Низкий' },
+  { value: 3, label: '3 м', description: 'Стандарт' },
+  { value: 3.5, label: '3.5 м', description: 'Средний' },
+  { value: 4, label: '4 м', description: 'Высокий' },
+  { value: 4.5, label: '4.5 м', description: 'Максимум' },
 ]
 
 const TYPE_OPTIONS: { value: StandType; label: string; description: string; icon: React.ReactNode }[] = [
@@ -57,6 +65,35 @@ export function StepStandSpecs({ data, onChange }: StepStandSpecsProps) {
               }`}
             >
               <p className={`text-lg font-bold ${data.area_sqm === option.value ? 'text-violet-600' : 'text-gray-900'}`}>
+                {option.label}
+              </p>
+              <p className="text-xs text-gray-500">{option.description}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Height */}
+      <div>
+        <label className="mb-3 block text-sm font-medium text-gray-700">
+          <span className="flex items-center gap-2">
+            <ArrowUpDown className="h-4 w-4 text-gray-400" />
+            Высота стенда <span className="text-red-500">*</span>
+          </span>
+        </label>
+        <div className="grid grid-cols-5 gap-2">
+          {HEIGHT_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onChange({ height_meters: option.value })}
+              className={`rounded-xl border-2 p-3 text-center transition-all ${
+                data.height_meters === option.value
+                  ? 'border-violet-500 bg-violet-50 ring-2 ring-violet-500/20 scale-105'
+                  : 'border-gray-200 hover:border-violet-300 hover:bg-violet-50/50'
+              }`}
+            >
+              <p className={`text-lg font-bold ${data.height_meters === option.value ? 'text-violet-600' : 'text-gray-900'}`}>
                 {option.label}
               </p>
               <p className="text-xs text-gray-500">{option.description}</p>
