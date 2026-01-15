@@ -126,7 +126,7 @@ export function buildImagePrompt(
         'display_cases': 'glass display cases for products',
         'brochure_stands': 'brochure and literature stands',
         'podiums': 'podiums for equipment display',
-        'monitors_led': 'LED screens and monitors',
+        'monitors_led': 'large widescreen LCD/LED monitors mounted on stands or walls',
         'plants': 'decorative live plants and greenery',
       }
       return elementMap[element] || element
@@ -194,6 +194,16 @@ The booth features a large, prominent illuminated sign displaying the company na
   }
   const budgetQuality = budgetQualityMap[data.budget_range || 'standard'] || budgetQualityMap['standard']
 
+  // Build special requests section if provided
+  const specialRequestsSection = data.special_requests
+    ? `SPECIAL CLIENT REQUESTS (incorporate these into the design): ${data.special_requests}.`
+    : ''
+
+  // Build exclusions section if provided
+  const exclusionsSection = data.exclusions
+    ? `THINGS TO AVOID (do NOT include these): ${data.exclusions}.`
+    : ''
+
   return `Professional photorealistic 3D render of an exhibition trade show booth.
 ${businessDescription}${variationNote}${typeMap[data.stand_type as StandType] || 'exhibition booth'}.
 ${styleMap[data.style as StandStyle] || 'modern professional style'}. ${budgetQuality}
@@ -201,6 +211,8 @@ ${dimensionsDescription}${data.has_suspended ? ' With impressive suspended hangi
 ${zoneDescriptions ? `Functional zones include: ${zoneDescriptions}.` : ''}
 ${elementDescriptions ? `Features: ${elementDescriptions}.` : ''}
 Brand colors: ${colors}. ${brandingDescription}
+${specialRequestsSection}
+${exclusionsSection}
 Trade show exhibition hall environment with professional lighting, neighboring booths visible in background, visitors walking by for scale.
 Photorealistic architectural visualization quality, high detail, professional photography style, well-lit, no watermarks.`
 }
