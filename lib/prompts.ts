@@ -100,10 +100,10 @@ export function buildImagePrompt(
   }
 
   const typeMap: Record<StandType, string> = {
-    'linear': 'linear booth with 3 back walls, open on one side',
-    'corner': 'corner booth with 2 open sides at 90 degrees',
-    'peninsula': 'peninsula booth with 3 open sides',
-    'island': 'island booth open on all 4 sides, accessible from everywhere',
+    'linear': 'LINEAR booth configuration: has solid walls on 3 sides (back wall and 2 side walls), with only the FRONT side open to the aisle for visitor access',
+    'corner': 'CORNER booth configuration: has solid walls on 2 adjacent sides (forming an L-shape in the back corner), with 2 OPEN sides facing the aisles at 90 degrees for visitor access',
+    'peninsula': 'PENINSULA booth configuration: has only 1 solid back wall, with 3 OPEN sides (front and both sides) facing the aisles for maximum visitor access',
+    'island': 'ISLAND booth configuration: NO walls - completely open on ALL 4 SIDES, free-standing in the middle of the exhibition hall, accessible from every direction',
   }
 
   const zoneDescriptions = (data.zones || [])
@@ -151,7 +151,7 @@ export function buildImagePrompt(
   let colors: string
 
   if (logoAnalysis) {
-    // Use detailed logo description from GPT-4 Vision analysis
+    // Use detailed logo description from GPT-4 Vision analysis - LOGO IS PRIMARY
     const logoColors = logoAnalysis.colors.length > 0
       ? logoAnalysis.colors.join(', ')
       : data.brand_colors || 'professional corporate colors'
@@ -161,15 +161,22 @@ export function buildImagePrompt(
       ? ` The logo contains the text "${logoAnalysis.textContent}".`
       : ''
 
-    brandingDescription = `The booth prominently features the company logo on the main fascia/header, reception counter, and key visible surfaces. IMPORTANT LOGO DETAILS: ${logoAnalysis.description}${logoTextPart} The logo style is ${logoAnalysis.style}. The logo should be the primary branding element, displayed large and illuminated, accurately representing these visual characteristics. Company name "${companyName}" appears as secondary text below or near the logo.`
+    brandingDescription = `CRITICAL BRANDING REQUIREMENT - COMPANY LOGO MUST BE THE DOMINANT VISUAL ELEMENT:
+The booth MUST prominently display the company logo as the PRIMARY branding element. The logo appears on: main fascia/header (largest placement), reception counter front, and all key visible surfaces.
+EXACT LOGO DESCRIPTION (FOLLOW PRECISELY): ${logoAnalysis.description}${logoTextPart}
+LOGO VISUAL STYLE: ${logoAnalysis.style} - maintain this exact style in the render.
+The logo must be: (1) large and clearly visible, (2) backlit/illuminated for emphasis, (3) accurately rendered matching the described visual characteristics, (4) the most eye-catching element of the booth design.
+Company name "${companyName}" appears as smaller secondary text below or near the main logo.`
   } else if (data.brand_files && data.brand_files.length > 0) {
-    // Logo uploaded but not analyzed - generic logo description
+    // Logo uploaded but not analyzed - still prioritize logo
     colors = data.brand_colors || 'professional corporate colors'
-    brandingDescription = `The booth prominently features the company logo on the main fascia/header, reception counter, and key visible surfaces. The logo should be the primary branding element, displayed large and illuminated. Company name "${companyName}" appears as secondary text below or near the logo.`
+    brandingDescription = `CRITICAL BRANDING REQUIREMENT - COMPANY LOGO MUST BE THE DOMINANT VISUAL ELEMENT:
+The booth MUST prominently display the company logo as the PRIMARY branding element on main fascia/header, reception counter, and key visible surfaces. The logo should be large, backlit/illuminated, and the most eye-catching element. Company name "${companyName}" appears as smaller secondary text below or near the logo.`
   } else {
-    // No logo - focus on company name
+    // No logo uploaded - use company name as primary branding
     colors = data.brand_colors || 'professional corporate colors'
-    brandingDescription = `The booth has a large illuminated sign displaying the company name "${companyName}" in bold sans-serif capital letters, clearly readable and correctly spelled. The company name is the primary branding element on the main fascia/header.`
+    brandingDescription = `PRIMARY BRANDING - COMPANY NAME AS MAIN ELEMENT (no logo provided):
+The booth features a large, prominent illuminated sign displaying the company name "${companyName}" in bold sans-serif capital letters. This text signage is the PRIMARY branding element, placed on the main fascia/header. The company name must be: (1) clearly readable from distance, (2) correctly spelled exactly as "${companyName}", (3) backlit/illuminated for maximum visibility, (4) the most prominent visual element of the booth.`
   }
 
   // Build dimensions description (calculate area from width × length)

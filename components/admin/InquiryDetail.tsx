@@ -189,8 +189,25 @@ export function InquiryDetail({ inquiryId }: InquiryDetailProps) {
             <div className="grid gap-4 sm:grid-cols-2">
               <InfoItem
                 icon={Building}
+                label="Габариты (Ш×Г×В)"
+                value={
+                  inquiry.width_meters && inquiry.length_meters && inquiry.height_meters
+                    ? `${inquiry.width_meters}×${inquiry.length_meters}×${inquiry.height_meters} м`
+                    : inquiry.height_meters
+                    ? `${inquiry.height_meters} м (высота)`
+                    : '—'
+                }
+              />
+              <InfoItem
+                icon={Building}
                 label="Площадь"
-                value={inquiry.area_sqm ? `${inquiry.area_sqm} м²` : '—'}
+                value={
+                  inquiry.width_meters && inquiry.length_meters
+                    ? `${inquiry.width_meters * inquiry.length_meters} м²`
+                    : inquiry.area_sqm
+                    ? `${inquiry.area_sqm} м²`
+                    : '—'
+                }
               />
               <InfoItem
                 icon={Ruler}
@@ -201,11 +218,6 @@ export function InquiryDetail({ inquiryId }: InquiryDetailProps) {
                 icon={Users}
                 label="Персонал"
                 value={inquiry.staff_count ? `${inquiry.staff_count} чел.` : '—'}
-              />
-              <InfoItem
-                icon={Ruler}
-                label="Высота"
-                value={inquiry.height_meters ? `${inquiry.height_meters} м` : '—'}
               />
               <InfoItem
                 icon={Palette}

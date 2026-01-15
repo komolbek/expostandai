@@ -135,8 +135,12 @@ export function InquiryList() {
                   <div className="flex flex-wrap gap-4 text-sm text-gray-600">
                     <span className="flex items-center gap-1.5">
                       <Building className="h-4 w-4" />
-                      {inquiry.area_sqm ? `${inquiry.area_sqm}м²` : '—'} •{' '}
-                      {inquiry.stand_type ? formatStandType(inquiry.stand_type) : '—'}
+                      {inquiry.width_meters && inquiry.length_meters
+                        ? `${inquiry.width_meters * inquiry.length_meters}м²`
+                        : inquiry.area_sqm
+                        ? `${inquiry.area_sqm}м²`
+                        : '—'}{' '}
+                      • {inquiry.stand_type ? formatStandType(inquiry.stand_type) : '—'}
                     </span>
                     <span className="flex items-center gap-1.5">
                       <DollarSign className="h-4 w-4" />
