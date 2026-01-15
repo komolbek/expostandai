@@ -234,7 +234,7 @@ export function StepDesignPrefs({ data, onChange }: StepDesignPrefsProps) {
             {/* Color 2 - Accent (Optional) */}
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-2">
-                Дополнительный цвет <span className="text-gray-400">(опционально)</span>
+                Акцентный цвет <span className="text-gray-400">(опционально)</span>
               </label>
               <div className="flex items-center gap-3">
                 <input
@@ -307,7 +307,7 @@ export function StepDesignPrefs({ data, onChange }: StepDesignPrefsProps) {
                     <div
                       className="h-10 w-10 rounded-lg shadow-sm border border-gray-200"
                       style={{ backgroundColor: data.color_accent }}
-                      title="Дополнительный"
+                      title="Акцкентный"
                     />
                   )}
                   {data.color_background && (

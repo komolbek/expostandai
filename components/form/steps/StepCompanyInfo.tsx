@@ -25,7 +25,7 @@ export function StepCompanyInfo({ data, onChange }: StepCompanyInfoProps) {
           <Input
             value={data.company_name || ''}
             onChange={(e) => onChange({ company_name: e.target.value })}
-            placeholder="ООО «Ваша Компания»"
+            placeholder="«Ваша Компания»"
           />
         </div>
 
