@@ -1,7 +1,7 @@
 import OpenAI from 'openai'
 import Replicate from 'replicate'
-import type { InquiryData } from './types'
-import { buildImagePrompt } from './prompts'
+import type { InquiryData, UploadedFile } from './types'
+import { buildImagePrompt, type LogoAnalysis } from './prompts'
 
 // Lazy initialization to avoid build-time errors
 let _openai: OpenAI | null = null
@@ -32,6 +32,95 @@ function getReplicate(): Replicate {
 export interface GeneratedImage {
   url: string
   variation: 'base' | 'alternative' | 'premium'
+}
+
+// Analyze uploaded logo using GPT-4 Vision
+export async function analyzeLogoWithVision(logoUrl: string): Promise<LogoAnalysis> {
+  const openai = getOpenAI()
+
+  // Convert relative URL to absolute URL for the API
+  const absoluteUrl = logoUrl.startsWith('http')
+    ? logoUrl
+    : `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}${logoUrl}`
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      max_tokens: 500,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `Analyze this company logo for use in generating an exhibition stand design. Provide a JSON response with:
+1. "description": A detailed visual description of the logo (shape, elements, composition) that can be used to recreate it in an image generation prompt
+2. "colors": Array of the main colors in the logo (e.g., ["blue", "white", "gold"])
+3. "style": The visual style (e.g., "modern minimalist", "classic corporate", "playful", "tech-focused")
+4. "hasText": Boolean - whether the logo contains text
+5. "textContent": If hasText is true, what text is visible
+
+Respond ONLY with valid JSON, no other text.`
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: absoluteUrl,
+                detail: 'high'
+              }
+            }
+          ]
+        }
+      ]
+    })
+
+    const content = response.choices[0]?.message?.content
+    if (!content) {
+      throw new Error('No response from GPT-4 Vision')
+    }
+
+    // Parse JSON response
+    const jsonMatch = content.match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]) as LogoAnalysis
+    }
+
+    // Fallback if JSON parsing fails
+    return {
+      description: content,
+      colors: [],
+      style: 'corporate',
+      hasText: false
+    }
+  } catch (error) {
+    console.error('Logo analysis failed:', error)
+    // Return a generic fallback
+    return {
+      description: 'company logo',
+      colors: [],
+      style: 'corporate',
+      hasText: false
+    }
+  }
+}
+
+// Analyze first logo from brand files
+export async function analyzeLogoFromFiles(brandFiles: UploadedFile[]): Promise<LogoAnalysis | null> {
+  if (!brandFiles || brandFiles.length === 0) {
+    return null
+  }
+
+  // Find the first image file (logo)
+  const imageFile = brandFiles.find(file =>
+    file.type.startsWith('image/') ||
+    file.name.match(/\.(png|jpg|jpeg|svg|webp)$/i)
+  )
+
+  if (!imageFile) {
+    return null
+  }
+
+  return analyzeLogoWithVision(imageFile.url)
 }
 
 // Primary: DALL-E 3
@@ -82,9 +171,10 @@ async function generateWithFlux(prompt: string): Promise<string> {
 // Generate a single image with fallback
 async function generateSingleImage(
   data: Partial<InquiryData>,
-  variation: 'base' | 'alternative' | 'premium'
+  variation: 'base' | 'alternative' | 'premium',
+  logoAnalysis?: LogoAnalysis | null
 ): Promise<GeneratedImage> {
-  const prompt = buildImagePrompt(data, variation)
+  const prompt = buildImagePrompt(data, variation, logoAnalysis)
 
   // Try DALL-E first, fall back to Flux
   try {
@@ -110,6 +200,20 @@ export async function generateStandDesigns(
 ): Promise<{ images: GeneratedImage[]; generationTime: number }> {
   const startTime = Date.now()
 
+  // First, analyze logo if brand files are uploaded
+  let logoAnalysis: LogoAnalysis | null = null
+  if (data.brand_files && data.brand_files.length > 0) {
+    console.log('Analyzing uploaded logo with GPT-4 Vision...')
+    try {
+      logoAnalysis = await analyzeLogoFromFiles(data.brand_files)
+      if (logoAnalysis) {
+        console.log('Logo analysis complete:', logoAnalysis)
+      }
+    } catch (error) {
+      console.error('Logo analysis failed, proceeding without:', error)
+    }
+  }
+
   const variations: Array<'base' | 'alternative' | 'premium'> = ['base', 'alternative', 'premium']
 
   // Generate images sequentially to avoid rate limits
@@ -118,7 +222,7 @@ export async function generateStandDesigns(
 
   for (const variation of variations) {
     try {
-      const image = await generateSingleImage(data, variation)
+      const image = await generateSingleImage(data, variation, logoAnalysis)
       images.push(image)
     } catch (error) {
       console.error(`Failed to generate ${variation} image:`, error)

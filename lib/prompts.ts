@@ -77,8 +77,21 @@ IMPORTANT RULES:
 - Set isComplete: true only when user confirms the summary`
 }
 
+// Logo analysis result type
+export interface LogoAnalysis {
+  description: string
+  colors: string[]
+  style: string
+  hasText: boolean
+  textContent?: string
+}
+
 // Build image generation prompt from collected data
-export function buildImagePrompt(data: Partial<InquiryData>, variation: 'base' | 'alternative' | 'premium'): string {
+export function buildImagePrompt(
+  data: Partial<InquiryData>,
+  variation: 'base' | 'alternative' | 'premium',
+  logoAnalysis?: LogoAnalysis | null
+): string {
   const styleMap: Record<StandStyle, string> = {
     'hi-tech': 'modern hi-tech style with aluminum frames, glass panels, LED accent lighting, sleek metallic finishes',
     'classic': 'classic interior style with wooden panels, warm ambient lighting, elegant fabric finishes, sophisticated design',
@@ -127,20 +140,37 @@ export function buildImagePrompt(data: Partial<InquiryData>, variation: 'base' |
     variationNote = 'Premium upgraded version with enhanced materials and larger signage. '
   }
 
-  const colors = data.brand_colors || 'professional corporate colors'
   // Use uppercase for better text rendering in DALL-E
   const companyName = (data.company_name || 'COMPANY').toUpperCase()
   const businessDescription = data.products_services
     ? `The company specializes in ${data.products_services}. `
     : ''
 
-  // Check if client has uploaded a company logo
-  const hasCompanyLogo = data.brand_files && data.brand_files.length > 0
+  // Build branding description based on logo analysis
+  let brandingDescription: string
+  let colors: string
 
-  // If logo is uploaded, focus on logo placement; otherwise, focus on company name text
-  const brandingDescription = hasCompanyLogo
-    ? `The booth prominently features the company logo on the main fascia/header, reception counter, and key visible surfaces. The logo should be the primary branding element, displayed large and illuminated. Company name "${companyName}" appears as secondary text below or near the logo.`
-    : `The booth has a large illuminated sign displaying the company name "${companyName}" in bold sans-serif capital letters, clearly readable and correctly spelled. The company name is the primary branding element on the main fascia/header.`
+  if (logoAnalysis) {
+    // Use detailed logo description from GPT-4 Vision analysis
+    const logoColors = logoAnalysis.colors.length > 0
+      ? logoAnalysis.colors.join(', ')
+      : data.brand_colors || 'professional corporate colors'
+    colors = logoColors
+
+    const logoTextPart = logoAnalysis.hasText && logoAnalysis.textContent
+      ? ` The logo contains the text "${logoAnalysis.textContent}".`
+      : ''
+
+    brandingDescription = `The booth prominently features the company logo on the main fascia/header, reception counter, and key visible surfaces. IMPORTANT LOGO DETAILS: ${logoAnalysis.description}${logoTextPart} The logo style is ${logoAnalysis.style}. The logo should be the primary branding element, displayed large and illuminated, accurately representing these visual characteristics. Company name "${companyName}" appears as secondary text below or near the logo.`
+  } else if (data.brand_files && data.brand_files.length > 0) {
+    // Logo uploaded but not analyzed - generic logo description
+    colors = data.brand_colors || 'professional corporate colors'
+    brandingDescription = `The booth prominently features the company logo on the main fascia/header, reception counter, and key visible surfaces. The logo should be the primary branding element, displayed large and illuminated. Company name "${companyName}" appears as secondary text below or near the logo.`
+  } else {
+    // No logo - focus on company name
+    colors = data.brand_colors || 'professional corporate colors'
+    brandingDescription = `The booth has a large illuminated sign displaying the company name "${companyName}" in bold sans-serif capital letters, clearly readable and correctly spelled. The company name is the primary branding element on the main fascia/header.`
+  }
 
   return `Professional photorealistic 3D render of an exhibition trade show booth.
 ${businessDescription}${variationNote}${typeMap[data.stand_type as StandType] || 'exhibition booth'}, approximately ${data.area_sqm || 24} square meters floor area.
