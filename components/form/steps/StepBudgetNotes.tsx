@@ -1,6 +1,6 @@
 'use client'
 
-import { Wallet } from 'lucide-react'
+import { Wallet, Coins, Star, Crown } from 'lucide-react'
 import { Textarea } from '@/components/ui/Textarea'
 import type { InquiryData, BudgetRange } from '@/lib/types'
 
@@ -9,10 +9,10 @@ interface StepBudgetNotesProps {
   onChange: (data: Partial<InquiryData>) => void
 }
 
-const BUDGET_OPTIONS: { value: BudgetRange; label: string; description: string; icon: string }[] = [
-  { value: 'economy', label: 'Эконом', description: 'Базовое функциональное решение', icon: '💰' },
-  { value: 'standard', label: 'Стандарт', description: 'Оптимальное соотношение цена/качество', icon: '⭐' },
-  { value: 'premium', label: 'Премиум', description: 'Максимальное качество и материалы', icon: '👑' },
+const BUDGET_OPTIONS: { value: BudgetRange; label: string; description: string; icon: React.ReactNode; gradient: string }[] = [
+  { value: 'economy', label: 'Эконом', description: 'Базовое функциональное решение', icon: <Coins className="h-6 w-6" />, gradient: 'from-gray-400 to-gray-500' },
+  { value: 'standard', label: 'Стандарт', description: 'Оптимальное соотношение цена/качество', icon: <Star className="h-6 w-6" />, gradient: 'from-blue-400 to-blue-500' },
+  { value: 'premium', label: 'Премиум', description: 'Максимальное качество и материалы', icon: <Crown className="h-6 w-6" />, gradient: 'from-amber-400 to-amber-500' },
 ]
 
 export function StepBudgetNotes({ data, onChange }: StepBudgetNotesProps) {
@@ -43,7 +43,9 @@ export function StepBudgetNotes({ data, onChange }: StepBudgetNotesProps) {
                   : 'border-gray-200 hover:border-emerald-300 hover:bg-emerald-50/30'
               }`}
             >
-              <span className="text-2xl mb-2">{option.icon}</span>
+              <div className={`flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br ${option.gradient} text-white mb-2`}>
+                {option.icon}
+              </div>
               <p className={`font-semibold ${data.budget_range === option.value ? 'text-emerald-700' : 'text-gray-900'}`}>
                 {option.label}
               </p>

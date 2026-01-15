@@ -40,6 +40,7 @@ export function StandForm() {
 
   // Generation state (now server-tracked)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [generationProgress, setGenerationProgress] = useState(0)
   const [generatedImages, setGeneratedImages] = useState<string[]>([])
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -88,6 +89,27 @@ export function StandForm() {
       }
     }
   }, [])
+
+  // Progress bar animation during generation
+  useEffect(() => {
+    if (!isGenerating) {
+      setGenerationProgress(0)
+      return
+    }
+
+    // Simulate progress: fast at start, slower towards end
+    // Total expected time ~45-60 seconds for 3 images
+    const interval = setInterval(() => {
+      setGenerationProgress((prev) => {
+        if (prev >= 95) return prev // Cap at 95% until complete
+        // Faster at start, slower as it progresses
+        const increment = prev < 30 ? 2 : prev < 60 ? 1.5 : prev < 80 ? 1 : 0.5
+        return Math.min(prev + increment, 95)
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [isGenerating])
 
   const updateFormData = (data: Partial<InquiryData>) => {
     setFormData((prev) => ({ ...prev, ...data }))
@@ -387,8 +409,31 @@ export function StandForm() {
                   <Loader2 className="h-10 w-10 animate-spin text-white" />
                 </div>
                 <p className="font-semibold text-gray-900">Генерируем дизайны...</p>
-                <p className="text-sm text-gray-500 mt-1">Это может занять 30-60 секунд</p>
-                <p className="text-xs text-gray-400 mt-2">Пожалуйста, не закрывайте страницу</p>
+                <p className="text-sm text-gray-500 mt-1">Создаём 3 варианта вашего стенда</p>
+
+                {/* Progress bar */}
+                <div className="mt-4 mx-auto max-w-xs">
+                  <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                    <span>Прогресс</span>
+                    <span>{Math.round(generationProgress)}%</span>
+                  </div>
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-purple-500 to-fuchsia-600 rounded-full transition-all duration-1000 ease-out"
+                      style={{ width: `${generationProgress}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">
+                    {generationProgress < 30
+                      ? 'Анализируем параметры...'
+                      : generationProgress < 60
+                      ? 'Генерируем первые варианты...'
+                      : generationProgress < 85
+                      ? 'Завершаем генерацию...'
+                      : 'Почти готово...'}
+                  </p>
+                </div>
+
                 <Button
                   variant="secondary"
                   onClick={handleCancelGeneration}
