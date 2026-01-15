@@ -22,8 +22,6 @@ interface DimensionSliderProps {
 
 function DimensionSlider({ label, icon, value, min, max, step, presets, onChange }: DimensionSliderProps) {
   const percent = ((value - min) / (max - min)) * 100
-  // Adjust thumb position to account for thumb width (12px = half of 24px thumb)
-  const thumbOffset = 12
 
   return (
     <div className="rounded-xl border-2 border-gray-200 p-4 bg-gradient-to-br from-gray-50 to-slate-50">
@@ -36,13 +34,15 @@ function DimensionSlider({ label, icon, value, min, max, step, presets, onChange
         <span className="text-2xl font-bold text-violet-600">{value} м</span>
         <span className="text-sm text-gray-500">{max} м</span>
       </div>
-      <div className="relative px-3">
+      <div className="relative">
+        {/* Track background */}
         <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-violet-400 to-violet-600 rounded-full transition-all"
             style={{ width: `${percent}%` }}
           />
         </div>
+        {/* Hidden range input */}
         <input
           type="range"
           min={min}
@@ -51,15 +51,16 @@ function DimensionSlider({ label, icon, value, min, max, step, presets, onChange
           value={value}
           onChange={(e) => onChange(parseFloat(e.target.value))}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-          style={{ left: 0, right: 0, paddingLeft: '12px', paddingRight: '12px' }}
         />
+        {/* Custom thumb */}
         <div
-          className="absolute top-1/2 -translate-y-1/2 w-6 h-6 bg-white border-2 border-violet-500 rounded-full shadow-lg pointer-events-none transition-all"
-          style={{ left: `calc(${percent}% + ${thumbOffset - (percent / 100) * (thumbOffset * 2)}px)` }}
+          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 bg-white border-2 border-violet-500 rounded-full shadow-lg pointer-events-none transition-all"
+          style={{ left: `${percent}%` }}
         />
       </div>
-      <div className="flex justify-between mt-2 px-3">
-        {presets.map((p, index) => {
+      {/* Preset buttons - positioned to match slider percentages */}
+      <div className="relative h-8 mt-2">
+        {presets.map((p) => {
           const presetPercent = ((p - min) / (max - min)) * 100
           const isSelected = Math.abs(value - p) < 0.05
           return (
@@ -67,14 +68,12 @@ function DimensionSlider({ label, icon, value, min, max, step, presets, onChange
               key={p}
               type="button"
               onClick={() => onChange(p)}
-              className={`text-xs px-2 py-1 rounded-md transition-all ${
+              className={`absolute -translate-x-1/2 text-xs px-2 py-1 rounded-md transition-all ${
                 isSelected
                   ? 'bg-violet-500 text-white font-medium'
                   : 'text-gray-500 hover:bg-gray-200'
               }`}
-              style={{
-                position: index === 0 ? 'relative' : index === presets.length - 1 ? 'relative' : 'relative',
-              }}
+              style={{ left: `${presetPercent}%` }}
             >
               {p}м
             </button>

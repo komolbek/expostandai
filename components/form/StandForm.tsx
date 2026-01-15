@@ -30,7 +30,12 @@ const STEPS = [
 
 export function StandForm() {
   const [currentStep, setCurrentStep] = useState(0)
-  const [formData, setFormData] = useState<Partial<InquiryData>>({})
+  const [formData, setFormData] = useState<Partial<InquiryData>>({
+    // Default dimension values
+    width_meters: 3,
+    length_meters: 3,
+    height_meters: 3,
+  })
   const [contactInfo, setContactInfo] = useState<ContactInfo>({ name: '', phone: '' })
 
   // Generation state (now server-tracked)
@@ -339,7 +344,8 @@ export function StandForm() {
             <div className="rounded-xl bg-gradient-to-br from-purple-50 to-fuchsia-50 p-5 border border-purple-100">
               <h3 className="font-semibold text-purple-900 mb-3">Ваш стенд:</h3>
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><span className="text-gray-500">Площадь:</span> <span className="font-medium">{formData.area_sqm} м²</span></div>
+                <div><span className="text-gray-500">Габариты:</span> <span className="font-medium">{formData.width_meters}×{formData.length_meters}×{formData.height_meters} м</span></div>
+                <div><span className="text-gray-500">Площадь:</span> <span className="font-medium">{(formData.width_meters || 3) * (formData.length_meters || 3)} м²</span></div>
                 <div><span className="text-gray-500">Тип:</span> <span className="font-medium">{
                   formData.stand_type === 'linear' ? 'Линейный' :
                   formData.stand_type === 'corner' ? 'Угловой' :
@@ -354,7 +360,6 @@ export function StandForm() {
                   formData.style === 'minimal' ? 'Минимализм' :
                   formData.style
                 }</span></div>
-                <div><span className="text-gray-500">Высота:</span> <span className="font-medium">{formData.height_meters} м</span></div>
               </div>
             </div>
 
@@ -439,9 +444,9 @@ export function StandForm() {
       case 'company':
         return formData.company_name && formData.products_services
       case 'specs':
-        return formData.area_sqm && formData.stand_type && formData.staff_count
+        return formData.width_meters && formData.length_meters && formData.height_meters && formData.stand_type && formData.staff_count
       case 'design':
-        return formData.style && formData.height_meters && formData.main_goal
+        return formData.style && formData.main_goal
       case 'zones':
         return formData.zones && formData.zones.length > 0
       case 'files':
