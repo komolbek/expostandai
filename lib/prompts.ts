@@ -172,15 +172,24 @@ export function buildImagePrompt(
     brandingDescription = `The booth has a large illuminated sign displaying the company name "${companyName}" in bold sans-serif capital letters, clearly readable and correctly spelled. The company name is the primary branding element on the main fascia/header.`
   }
 
-  // Build dimensions description
+  // Build dimensions description (calculate area from width × length)
   const width = data.width_meters || 3
   const length = data.length_meters || 3
   const height = data.height_meters || 3
-  const dimensionsDescription = `EXACT STAND DIMENSIONS (follow precisely): ${width}m wide (front) × ${length}m deep × ${height}m tall.`
+  const calculatedArea = width * length
+  const dimensionsDescription = `EXACT STAND DIMENSIONS (follow precisely): ${width}m wide (front) × ${length}m deep × ${height}m tall (${calculatedArea} square meters floor area).`
+
+  // Budget tier affects materials quality description
+  const budgetQualityMap: Record<string, string> = {
+    'economy': 'Cost-effective materials with clean functional design, standard finishes.',
+    'standard': 'Quality materials with professional finishes, good balance of aesthetics and functionality.',
+    'premium': 'High-end premium materials, luxury finishes, exceptional craftsmanship and attention to detail.',
+  }
+  const budgetQuality = budgetQualityMap[data.budget_range || 'standard'] || budgetQualityMap['standard']
 
   return `Professional photorealistic 3D render of an exhibition trade show booth.
-${businessDescription}${variationNote}${typeMap[data.stand_type as StandType] || 'exhibition booth'}, approximately ${data.area_sqm || 24} square meters floor area.
-${styleMap[data.style as StandStyle] || 'modern professional style'}.
+${businessDescription}${variationNote}${typeMap[data.stand_type as StandType] || 'exhibition booth'}.
+${styleMap[data.style as StandStyle] || 'modern professional style'}. ${budgetQuality}
 ${dimensionsDescription}${data.has_suspended ? ' With impressive suspended hanging structure above the booth.' : ''}
 ${zoneDescriptions ? `Functional zones include: ${zoneDescriptions}.` : ''}
 ${elementDescriptions ? `Features: ${elementDescriptions}.` : ''}
@@ -290,11 +299,9 @@ function formatStandTypeForTelegram(type?: string): string {
 function formatBudgetForTelegram(range?: string): string {
   if (!range) return '—'
   const budgetMap: Record<string, string> = {
-    'under_500k': 'до $5,000',
-    '500k_1m': '$5,000 – $10,000',
-    '1m_2m': '$10,000 – $20,000',
-    '2m_5m': '$20,000 – $50,000',
-    'over_5m': 'более $50,000',
+    'economy': 'Эконом',
+    'standard': 'Стандарт',
+    'premium': 'Премиум',
   }
   return budgetMap[range] || range
 }

@@ -77,19 +77,6 @@ export function StepZonesElements({ data, onChange }: StepZonesElementsProps) {
                   <p className="font-semibold text-gray-900">{option.label}</p>
                   <p className="text-sm text-gray-500">{option.description}</p>
                 </div>
-                <div
-                  className={`flex h-6 w-6 items-center justify-center rounded-md border-2 transition-all ${
-                    isSelected
-                      ? 'border-orange-500 bg-orange-500 text-white'
-                      : 'border-gray-300'
-                  }`}
-                >
-                  {isSelected && (
-                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 12 12">
-                      <path d="M10.28 2.72a.75.75 0 010 1.06l-5.5 5.5a.75.75 0 01-1.06 0l-2.5-2.5a.75.75 0 111.06-1.06L4.5 7.94l4.97-4.97a.75.75 0 011.06 0z" />
-                    </svg>
-                  )}
-                </div>
               </button>
             )
           })}

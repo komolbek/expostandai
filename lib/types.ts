@@ -5,12 +5,7 @@ export type StandStyle = 'hi-tech' | 'classic' | 'eco' | 'minimal'
 
 export type MainGoal = 'brand_awareness' | 'sales_increase' | 'trade' | 'prestige'
 
-export type BudgetRange =
-  | 'under_500k'
-  | '500k_1m'
-  | '1m_2m'
-  | '2m_5m'
-  | 'over_5m'
+export type BudgetRange = 'economy' | 'standard' | 'premium'
 
 export type InquiryStatus = 'new' | 'quoted' | 'accepted' | 'rejected' | 'archived'
 
@@ -257,11 +252,9 @@ export const MAIN_GOALS: SelectOption[] = [
 ]
 
 export const BUDGET_RANGES: SelectOption[] = [
-  { value: 'under_500k', label: 'Under $5,000', labelRu: 'до $5,000' },
-  { value: '500k_1m', label: '$5,000 - $10,000', labelRu: '$5,000 – $10,000' },
-  { value: '1m_2m', label: '$10,000 - $20,000', labelRu: '$10,000 – $20,000' },
-  { value: '2m_5m', label: '$20,000 - $50,000', labelRu: '$20,000 – $50,000' },
-  { value: 'over_5m', label: 'Over $50,000', labelRu: 'более $50,000' },
+  { value: 'economy', label: 'Economy', labelRu: 'Эконом' },
+  { value: 'standard', label: 'Standard', labelRu: 'Стандарт' },
+  { value: 'premium', label: 'Premium', labelRu: 'Премиум' },
 ]
 
 export const STAND_ZONES: SelectOption[] = [
