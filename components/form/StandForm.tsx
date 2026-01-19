@@ -4,6 +4,8 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { ArrowLeft, ArrowRight, Check, Loader2, Building2, Ruler, Palette, LayoutGrid, Upload, Wallet, User, Sparkles, Wand2, AlertCircle, Ticket } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
+import { Dialog } from '@/components/ui/Dialog'
+import { Toast, useToast } from '@/components/ui/Toast'
 import { StepCompanyInfo } from './steps/StepCompanyInfo'
 import { StepStandSpecs } from './steps/StepStandSpecs'
 import { StepDesignPrefs } from './steps/StepDesignPrefs'
@@ -59,6 +61,11 @@ export function StandForm() {
 
   // AbortController for canceling generation
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  // Dialog and toast state
+  const toast = useToast()
+  const [showGenerationLimitDialog, setShowGenerationLimitDialog] = useState(false)
+  const [showGenerationErrorDialog, setShowGenerationErrorDialog] = useState(false)
 
   // Fetch generation status from server
   const fetchGenerationStatus = useCallback(async () => {
@@ -162,7 +169,7 @@ export function StandForm() {
 
   const handleGenerateDesigns = async () => {
     if (remainingGenerations <= 0) {
-      alert('Вы использовали все попытки генерации. Пожалуйста, отправьте заявку с текущими дизайнами.')
+      setShowGenerationLimitDialog(true)
       return
     }
 
@@ -187,7 +194,7 @@ export function StandForm() {
         if (response.status === 429) {
           // Limit exceeded - update from server
           setRemainingGenerations(0)
-          alert('Лимит генераций исчерпан.')
+          setShowGenerationLimitDialog(true)
           return
         }
         throw new Error(data.error || 'Failed to generate designs')
@@ -208,7 +215,7 @@ export function StandForm() {
         return
       }
       console.error('Failed to generate designs:', error)
-      alert('Не удалось сгенерировать дизайны. Попробуйте ещё раз или оставьте заявку без визуализации.')
+      setShowGenerationErrorDialog(true)
     } finally {
       setIsGenerating(false)
       abortControllerRef.current = null
@@ -242,7 +249,7 @@ export function StandForm() {
       setIsComplete(true)
     } catch (error) {
       console.error('Failed to submit inquiry:', error)
-      alert('Произошла ошибка при отправке заявки. Попробуйте ещё раз.')
+      toast.show('Произошла ошибка при отправке заявки. Попробуйте ещё раз.', 'error')
     } finally {
       setIsSubmitting(false)
     }
@@ -635,6 +642,41 @@ export function StandForm() {
           )}
         </div>
       </div>
+
+      {/* Modern Dialogs */}
+      <Dialog
+        isOpen={showGenerationLimitDialog}
+        onClose={() => setShowGenerationLimitDialog(false)}
+        title="Лимит генераций исчерпан"
+        variant="warning"
+        confirmText="Понятно"
+        showCancel={false}
+      >
+        <p className="text-sm text-gray-600">
+          Вы использовали все попытки генерации. Пожалуйста, отправьте заявку с текущими дизайнами или без визуализации.
+        </p>
+      </Dialog>
+
+      <Dialog
+        isOpen={showGenerationErrorDialog}
+        onClose={() => setShowGenerationErrorDialog(false)}
+        title="Ошибка генерации"
+        variant="error"
+        confirmText="Попробовать снова"
+        cancelText="Отправить без дизайна"
+        onConfirm={handleGenerateDesigns}
+      >
+        <p className="text-sm text-gray-600">
+          Не удалось сгенерировать дизайны. Попробуйте ещё раз или оставьте заявку без визуализации.
+        </p>
+      </Dialog>
+
+      <Toast
+        isOpen={toast.isOpen}
+        onClose={toast.close}
+        message={toast.message}
+        variant={toast.variant}
+      />
     </div>
   )
 }

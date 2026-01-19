@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { X, FileText, Image, Loader2, Upload } from 'lucide-react'
+import { Toast, useToast } from '@/components/ui/Toast'
 import type { InquiryData, UploadedFile } from '@/lib/types'
 import { generateId } from '@/lib/utils'
 import { useDropzone } from '@uploadthing/react'
@@ -16,6 +17,7 @@ interface StepFilesUploadProps {
 export function StepFilesUpload({ data, onChange }: StepFilesUploadProps) {
   const [isUploadingBrand, setIsUploadingBrand] = useState(false)
   const [isUploadingStand, setIsUploadingStand] = useState(false)
+  const toast = useToast()
 
   const brandFiles = data.brand_files || []
   const previousStandFiles = data.previous_stand_files || []
@@ -36,7 +38,7 @@ export function StepFilesUpload({ data, onChange }: StepFilesUploadProps) {
     onUploadError: (error) => {
       console.error('Brand upload error:', error)
       setIsUploadingBrand(false)
-      alert('Ошибка загрузки файла. Попробуйте ещё раз.')
+      toast.show('Ошибка загрузки файла. Попробуйте ещё раз.', 'error')
     },
     onUploadBegin: () => {
       setIsUploadingBrand(true)
@@ -59,7 +61,7 @@ export function StepFilesUpload({ data, onChange }: StepFilesUploadProps) {
     onUploadError: (error) => {
       console.error('Stand upload error:', error)
       setIsUploadingStand(false)
-      alert('Ошибка загрузки фото. Попробуйте ещё раз.')
+      toast.show('Ошибка загрузки фото. Попробуйте ещё раз.', 'error')
     },
     onUploadBegin: () => {
       setIsUploadingStand(true)
@@ -229,6 +231,13 @@ export function StepFilesUpload({ data, onChange }: StepFilesUploadProps) {
           </div>
         )}
       </div>
+
+      <Toast
+        isOpen={toast.isOpen}
+        onClose={toast.close}
+        message={toast.message}
+        variant={toast.variant}
+      />
     </div>
   )
 }

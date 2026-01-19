@@ -80,3 +80,38 @@ export async function uploadMultipleImagesFromUrls(
   console.log(`[Upload] Successfully uploaded ${successfulUrls.length}/${imageUrls.length} images`)
   return successfulUrls
 }
+
+/**
+ * Delete files from UploadThing storage by their URLs
+ */
+export async function deleteImagesFromUrls(imageUrls: string[]): Promise<void> {
+  if (!imageUrls || imageUrls.length === 0) {
+    console.log('[Upload] No images to delete')
+    return
+  }
+
+  console.log(`[Upload] Deleting ${imageUrls.length} images from storage...`)
+
+  try {
+    // Extract file keys from URLs
+    // UploadThing URLs are like: https://utfs.io/f/{fileKey}
+    const fileKeys = imageUrls
+      .filter((url) => url && url.includes('utfs.io/f/'))
+      .map((url) => {
+        const parts = url.split('utfs.io/f/')
+        return parts[1] || ''
+      })
+      .filter((key) => key.length > 0)
+
+    if (fileKeys.length === 0) {
+      console.log('[Upload] No valid UploadThing URLs found to delete')
+      return
+    }
+
+    await utapi.deleteFiles(fileKeys)
+    console.log(`[Upload] Successfully deleted ${fileKeys.length} images from storage`)
+  } catch (error) {
+    console.error('[Upload] Failed to delete images:', error)
+    throw error
+  }
+}

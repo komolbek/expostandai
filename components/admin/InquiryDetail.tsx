@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/Badge'
+import { Dialog } from '@/components/ui/Dialog'
 import {
   formatDateTime,
   formatBudget,
@@ -27,6 +28,7 @@ import {
   Target,
   DollarSign,
   Loader2,
+  Download,
 } from 'lucide-react'
 
 interface InquiryDetailProps {
@@ -39,6 +41,13 @@ export function InquiryDetail({ inquiryId }: InquiryDetailProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Dialog states
+  const [showDownloadDialog, setShowDownloadDialog] = useState(false)
+  const [showFinalConfirmDialog, setShowFinalConfirmDialog] = useState(false)
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false)
+  const [showErrorDialog, setShowErrorDialog] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
 
   useEffect(() => {
     const fetchInquiry = async () => {
@@ -68,14 +77,45 @@ export function InquiryDetail({ inquiryId }: InquiryDetailProps) {
   const handleStatusToggle = async () => {
     if (!inquiry) return
 
-    setIsSaving(true)
     const newStatus = inquiry.status === 'new' ? 'completed' : 'new'
+
+    // If marking as completed and there's a generated image, prompt for download/deletion
+    if (newStatus === 'completed' && inquiry.generated_images && inquiry.generated_images.length > 0) {
+      setShowDownloadDialog(true)
+      return
+    }
+
+    // Directly update status if no images
+    await updateStatus(newStatus)
+  }
+
+  const handleDownloadConfirm = () => {
+    if (!inquiry || !inquiry.generated_images?.[0]) return
+
+    // Open image in new tab for download
+    window.open(inquiry.generated_images[0], '_blank')
+
+    // Show final confirmation after a brief delay
+    setTimeout(() => {
+      setShowFinalConfirmDialog(true)
+    }, 1000)
+  }
+
+  const handleFinalConfirm = async () => {
+    await updateStatus('completed')
+  }
+
+  const updateStatus = async (newStatus: 'new' | 'completed') => {
+    setIsSaving(true)
 
     try {
       const response = await fetch(`/api/admin/inquiries/${inquiryId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({
+          status: newStatus,
+          deleteImages: newStatus === 'completed'
+        }),
       })
 
       if (!response.ok) {
@@ -84,8 +124,13 @@ export function InquiryDetail({ inquiryId }: InquiryDetailProps) {
 
       const updated = await response.json()
       setInquiry(updated)
+
+      if (newStatus === 'completed') {
+        setShowSuccessDialog(true)
+      }
     } catch (err) {
-      alert('Ошибка обновления статуса')
+      setErrorMessage('Ошибка обновления статуса')
+      setShowErrorDialog(true)
     } finally {
       setIsSaving(false)
     }
@@ -403,6 +448,73 @@ export function InquiryDetail({ inquiryId }: InquiryDetailProps) {
           </section>
         </div>
       </div>
+
+      {/* Modern Dialogs */}
+      <Dialog
+        isOpen={showDownloadDialog}
+        onClose={() => setShowDownloadDialog(false)}
+        onConfirm={handleDownloadConfirm}
+        title="Скачать изображение"
+        variant="warning"
+        confirmText="Открыть и скачать"
+        cancelText="Отмена"
+      >
+        <div className="space-y-3 text-sm text-gray-600">
+          <p>
+            При завершении заявки изображение будет автоматически удалено из хранилища для экономии места.
+          </p>
+          <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3">
+            <Download className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
+            <p className="text-amber-900">
+              <strong>Рекомендуется скачать изображение</strong> перед завершением заявки.
+            </p>
+          </div>
+          <p className="text-xs text-gray-500">
+            Нажмите «Открыть и скачать» чтобы открыть изображение в новой вкладке, затем подтвердите завершение заявки.
+          </p>
+        </div>
+      </Dialog>
+
+      <Dialog
+        isOpen={showFinalConfirmDialog}
+        onClose={() => setShowFinalConfirmDialog(false)}
+        onConfirm={handleFinalConfirm}
+        title="Завершить заявку?"
+        variant="info"
+        confirmText="Да, завершить"
+        cancelText="Еще не скачал"
+      >
+        <div className="space-y-3 text-sm text-gray-600">
+          <p>Изображение открыто в новой вкладке.</p>
+          <p>
+            Убедитесь, что вы сохранили изображение перед продолжением. После завершения заявки оно будет удалено из облачного хранилища.
+          </p>
+        </div>
+      </Dialog>
+
+      <Dialog
+        isOpen={showSuccessDialog}
+        onClose={() => setShowSuccessDialog(false)}
+        title="Заявка завершена"
+        variant="success"
+        confirmText="Понятно"
+        showCancel={false}
+      >
+        <p className="text-sm text-gray-600">
+          Статус заявки изменен на «Выполнено». Изображение успешно удалено из хранилища.
+        </p>
+      </Dialog>
+
+      <Dialog
+        isOpen={showErrorDialog}
+        onClose={() => setShowErrorDialog(false)}
+        title="Ошибка"
+        variant="error"
+        confirmText="Закрыть"
+        showCancel={false}
+      >
+        <p className="text-sm text-gray-600">{errorMessage}</p>
+      </Dialog>
     </div>
   )
 }

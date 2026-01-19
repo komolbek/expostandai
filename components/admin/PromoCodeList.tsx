@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { Dialog } from '@/components/ui/Dialog'
 import type { PromoCode } from '@/lib/types'
 import {
   RefreshCw,
@@ -26,6 +27,12 @@ export function PromoCodeList() {
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [expiresAt, setExpiresAt] = useState('')
   const [maxGenerations, setMaxGenerations] = useState('5')
+
+  // Dialog states
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [showErrorDialog, setShowErrorDialog] = useState(false)
+  const [errorDialogMessage, setErrorDialogMessage] = useState('')
 
   const fetchPromoCodes = async () => {
     setIsLoading(true)
@@ -77,17 +84,23 @@ export function PromoCodeList() {
       setExpiresAt('')
       setMaxGenerations('5')
     } catch (err) {
-      alert('Ошибка при создании промокода')
+      setErrorDialogMessage('Ошибка при создании промокода')
+      setShowErrorDialog(true)
     } finally {
       setIsCreating(false)
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Удалить этот промокод?')) return
+  const handleDeleteClick = (id: string) => {
+    setDeleteId(id)
+    setShowDeleteDialog(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteId) return
 
     try {
-      const response = await fetch(`/api/admin/promo-codes?id=${id}`, {
+      const response = await fetch(`/api/admin/promo-codes?id=${deleteId}`, {
         method: 'DELETE',
       })
 
@@ -97,7 +110,8 @@ export function PromoCodeList() {
 
       await fetchPromoCodes()
     } catch (err) {
-      alert('Ошибка при удалении промокода')
+      setErrorDialogMessage('Ошибка при удалении промокода')
+      setShowErrorDialog(true)
     }
   }
 
@@ -295,7 +309,7 @@ export function PromoCodeList() {
                     </div>
                   )}
                   <button
-                    onClick={() => handleDelete(promo.id)}
+                    onClick={() => handleDeleteClick(promo.id)}
                     className="rounded p-2 text-gray-400 hover:bg-red-50 hover:text-red-500"
                     title="Удалить"
                   >
@@ -330,6 +344,32 @@ export function PromoCodeList() {
           ))
         )}
       </div>
+
+      {/* Modern Dialogs */}
+      <Dialog
+        isOpen={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        onConfirm={handleDeleteConfirm}
+        title="Удалить промокод?"
+        variant="warning"
+        confirmText="Удалить"
+        cancelText="Отмена"
+      >
+        <p className="text-sm text-gray-600">
+          Вы уверены, что хотите удалить этот промокод? Это действие нельзя отменить.
+        </p>
+      </Dialog>
+
+      <Dialog
+        isOpen={showErrorDialog}
+        onClose={() => setShowErrorDialog(false)}
+        title="Ошибка"
+        variant="error"
+        confirmText="Закрыть"
+        showCancel={false}
+      >
+        <p className="text-sm text-gray-600">{errorDialogMessage}</p>
+      </Dialog>
     </div>
   )
 }
