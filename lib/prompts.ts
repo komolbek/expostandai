@@ -1,81 +1,4 @@
-import type { ChatState, InquiryData, StandStyle, StandType } from './types'
-
-// System prompt for Claude AI conversation
-export function getSystemPrompt(currentState: ChatState): string {
-  return `You are an AI assistant for ExpoCity, helping clients design exhibition stands in Russia and Uzbekistan.
-
-Your job is to collect requirements through friendly conversation in Russian.
-Ask ONE question at a time. Be concise, warm, and professional.
-
-CURRENT PHASE: ${currentState.phase}
-DATA COLLECTED SO FAR: ${JSON.stringify(currentState.collectedData, null, 2)}
-
-CONVERSATION FLOW:
-1. greeting → Ask for company name
-2. company_name → Ask about products/services
-3. products_services → Ask about exhibition name and date
-4. exhibition_details → Ask about stand area (in sq meters)
-5. area → Ask about stand type (linear/corner/peninsula/island)
-6. stand_type → Ask how many staff will work at the stand
-7. staff_count → Ask about main exhibition goal
-8. main_goal → Ask about preferred style
-9. style → Ask about desired height
-10. height → Ask if they need a suspended structure
-11. suspended → Ask which zones they need (multi-select)
-12. zones → Ask which additional elements (multi-select)
-13. elements → Ask about brand colors
-14. brand_colors → Transition to file upload (brand_files_upload) - handled by frontend
-15. brand_files_upload → (handled by frontend) → previous_stand_upload
-16. previous_stand_upload → (handled by frontend) → budget
-17. budget → Ask about special requests or things to avoid
-18. special_requests → Show summary for confirmation
-19. summary → Mark as complete if confirmed
-
-NOTE: Phases brand_files_upload and previous_stand_upload are handled by the frontend.
-When user responds from brand_colors phase, set nextPhase to "brand_files_upload".
-When receiving "Продолжить" message after file uploads, continue to next logical question.
-
-REQUIRED FIELDS (must collect before summary):
-- company_name
-- products_services
-- area_sqm
-- stand_type
-- staff_count
-- main_goal
-- style
-- height_meters
-- zones (at least one)
-- budget_range
-
-OPTIONAL FIELDS:
-- exhibition_name, exhibition_date
-- has_suspended
-- elements
-- brand_colors
-- brand_files, previous_stand_files (handled by frontend)
-- special_requests, exclusions
-
-RESPONSE FORMAT:
-You MUST respond with valid JSON only (no markdown, no explanation outside JSON):
-{
-  "message": "Your message in Russian (use emoji sparingly)",
-  "quickReplies": ["Option 1", "Option 2"] or null,
-  "multiSelect": true or false,
-  "inputType": "text" | "number" | "date" | "file" | null,
-  "extractedData": { "field_name": "value" } or null,
-  "nextPhase": "next_phase_name",
-  "isComplete": false
-}
-
-IMPORTANT RULES:
-- Always respond in Russian
-- Be encouraging and friendly but professional
-- If user gives unclear answer, politely ask for clarification
-- For multi-select questions (zones, elements), set multiSelect: true
-- When showing summary, list all collected data clearly
-- If user wants to edit, go back to the appropriate phase
-- Set isComplete: true only when user confirms the summary`
-}
+import type { InquiryData, StandStyle, StandType } from './types'
 
 // Logo analysis result type
 export interface LogoAnalysis {
@@ -221,12 +144,23 @@ Photorealistic architectural visualization quality, high detail, professional ph
 export function getNewInquiryEmailHtml(inquiry: {
   company_name: string
   area_sqm?: number
+  width_meters?: number
+  length_meters?: number
+  height_meters?: number
   stand_type?: string
   budget_range?: string
   contact_name: string
   contact_phone: string
   adminUrl: string
 }): string {
+  const dimensions = inquiry.width_meters && inquiry.length_meters && inquiry.height_meters
+    ? `${inquiry.width_meters}×${inquiry.length_meters}×${inquiry.height_meters} м (Ш×Г×В)`
+    : inquiry.width_meters && inquiry.length_meters
+    ? `${inquiry.width_meters}×${inquiry.length_meters} м (${inquiry.width_meters * inquiry.length_meters}м²)`
+    : inquiry.area_sqm
+    ? `${inquiry.area_sqm} м²`
+    : '—'
+
   return `
 <!DOCTYPE html>
 <html>
@@ -253,7 +187,7 @@ export function getNewInquiryEmailHtml(inquiry: {
         <span class="label">🏢 Компания:</span> ${inquiry.company_name}
       </div>
       <div class="detail">
-        <span class="label">📐 Площадь:</span> ${inquiry.area_sqm || '—'} м²
+        <span class="label">📐 Размеры:</span> ${dimensions}
       </div>
       <div class="detail">
         <span class="label">🏗 Тип:</span> ${inquiry.stand_type || '—'}
@@ -283,6 +217,9 @@ export function getNewInquiryEmailHtml(inquiry: {
 export function getTelegramMessage(inquiry: {
   company_name: string
   area_sqm?: number
+  width_meters?: number
+  length_meters?: number
+  height_meters?: number
   stand_type?: string
   budget_range?: string
   contact_phone: string
@@ -290,9 +227,16 @@ export function getTelegramMessage(inquiry: {
 }): string {
   const standTypeRu = formatStandTypeForTelegram(inquiry.stand_type)
   const budgetRu = formatBudgetForTelegram(inquiry.budget_range)
-  const standDetails = inquiry.area_sqm
-    ? `${inquiry.area_sqm}м², ${standTypeRu}`
-    : standTypeRu || '—'
+
+  const dimensions = inquiry.width_meters && inquiry.length_meters && inquiry.height_meters
+    ? `${inquiry.width_meters}×${inquiry.length_meters}×${inquiry.height_meters}м (Ш×Г×В)`
+    : inquiry.width_meters && inquiry.length_meters
+    ? `${inquiry.width_meters}×${inquiry.length_meters}м (${inquiry.width_meters * inquiry.length_meters}м²)`
+    : inquiry.area_sqm
+    ? `${inquiry.area_sqm}м²`
+    : '—'
+
+  const standDetails = dimensions !== '—' ? `${dimensions}, ${standTypeRu}` : standTypeRu || '—'
 
   return `🆕 *Новая заявка\\!*
 

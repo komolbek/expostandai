@@ -14,25 +14,10 @@ const statusConfig: Record<InquiryStatus, { label: string; className: string; ic
     className: 'bg-blue-100 text-blue-700',
     icon: '🆕',
   },
-  quoted: {
-    label: 'Расчёт отправлен',
-    className: 'bg-yellow-100 text-yellow-700',
-    icon: '💰',
-  },
-  accepted: {
-    label: 'Принята',
+  completed: {
+    label: 'Выполнена',
     className: 'bg-green-100 text-green-700',
     icon: '✅',
-  },
-  rejected: {
-    label: 'Отклонена',
-    className: 'bg-red-100 text-red-700',
-    icon: '❌',
-  },
-  archived: {
-    label: 'В архиве',
-    className: 'bg-gray-100 text-gray-700',
-    icon: '📦',
   },
 }
 

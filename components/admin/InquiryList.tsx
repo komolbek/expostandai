@@ -5,34 +5,39 @@ import Link from 'next/link'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { formatDateTime, formatBudget, formatStandType } from '@/lib/utils'
-import type { Inquiry, InquiryStatus } from '@/lib/types'
-import { ChevronLeft, ChevronRight, RefreshCw, Building, Calendar, DollarSign, CheckCircle } from 'lucide-react'
-
-const statusFilters: Array<{ value: InquiryStatus | 'all'; label: string }> = [
-  { value: 'all', label: 'Все' },
-  { value: 'new', label: 'Новые' },
-  { value: 'quoted', label: 'Расчёт отправлен' },
-  { value: 'accepted', label: 'Принятые' },
-  { value: 'rejected', label: 'Отклонённые' },
-]
+import type { Inquiry } from '@/lib/types'
+import { ChevronLeft, ChevronRight, RefreshCw, Building, Calendar, DollarSign, CheckCircle, Search, X } from 'lucide-react'
 
 export function InquiryList() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [status, setStatus] = useState<InquiryStatus | 'all'>('all')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
+
+  // Search and filters
+  const [searchQuery, setSearchQuery] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'new' | 'completed'>('all')
 
   const fetchInquiries = async () => {
     setIsLoading(true)
     setError(null)
 
     try {
-      const response = await fetch(
-        `/api/admin/inquiries?status=${status}&page=${page}&limit=10`
-      )
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: '10',
+        status: statusFilter,
+      })
+
+      if (searchQuery) params.append('search', searchQuery)
+      if (dateFrom) params.append('dateFrom', dateFrom)
+      if (dateTo) params.append('dateTo', dateTo)
+
+      const response = await fetch(`/api/admin/inquiries?${params}`)
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -55,7 +60,17 @@ export function InquiryList() {
 
   useEffect(() => {
     fetchInquiries()
-  }, [status, page])
+  }, [page, searchQuery, dateFrom, dateTo, statusFilter])
+
+  const handleClearFilters = () => {
+    setSearchQuery('')
+    setDateFrom('')
+    setDateTo('')
+    setStatusFilter('all')
+    setPage(1)
+  }
+
+  const hasActiveFilters = searchQuery || dateFrom || dateTo || statusFilter !== 'all'
 
   return (
     <div>
@@ -78,24 +93,107 @@ export function InquiryList() {
         </Button>
       </div>
 
-      {/* Filters */}
-      <div className="mb-6 flex flex-wrap gap-2">
-        {statusFilters.map((filter) => (
+      {/* Search and Filters */}
+      <div className="mb-6 space-y-4">
+        {/* Status Filter Buttons */}
+        <div className="flex items-center gap-2">
           <button
-            key={filter.value}
             onClick={() => {
-              setStatus(filter.value)
+              setStatusFilter('all')
               setPage(1)
             }}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-              status === filter.value
-                ? 'bg-primary-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              statusFilter === 'all'
+                ? 'bg-primary-600 text-white shadow-sm'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            {filter.label}
+            Все ({total})
           </button>
-        ))}
+          <button
+            onClick={() => {
+              setStatusFilter('new')
+              setPage(1)
+            }}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              statusFilter === 'new'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+            }`}
+          >
+            🆕 Новые
+          </button>
+          <button
+            onClick={() => {
+              setStatusFilter('completed')
+              setPage(1)
+            }}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              statusFilter === 'completed'
+                ? 'bg-green-600 text-white shadow-sm'
+                : 'bg-green-50 text-green-700 hover:bg-green-100'
+            }`}
+          >
+            ✅ Выполненные
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-3 sm:flex-row">
+          {/* Search */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Поиск по телефону, имени или компании..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                setPage(1)
+              }}
+              className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 pl-10 pr-4 text-sm shadow-sm transition-all placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+            />
+          </div>
+
+          {/* Date From */}
+          <div className="sm:w-48">
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => {
+                setDateFrom(e.target.value)
+                setPage(1)
+              }}
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm shadow-sm transition-all focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              placeholder="От даты"
+            />
+          </div>
+
+          {/* Date To */}
+          <div className="sm:w-48">
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => {
+                setDateTo(e.target.value)
+                setPage(1)
+              }}
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm shadow-sm transition-all focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              placeholder="До даты"
+            />
+          </div>
+
+          {/* Clear Filters */}
+          {hasActiveFilters && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleClearFilters}
+              leftIcon={<X className="h-4 w-4" />}
+            >
+              Очистить
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Error */}
@@ -161,24 +259,11 @@ export function InquiryList() {
 
                 {inquiry.generated_images && inquiry.generated_images.length > 0 && (
                   <div className="flex items-center gap-2">
-                    {inquiry.selected_image_index !== undefined && inquiry.selected_image_index !== null && (
-                      <div className="flex items-center gap-1 text-green-600">
-                        <CheckCircle className="h-4 w-4" />
-                        <span className="text-xs font-medium">Выбран</span>
-                      </div>
-                    )}
-                    <div className="flex -space-x-2">
-                      {inquiry.generated_images.slice(0, 3).map((_, i) => (
-                        <div
-                          key={i}
-                          className={`h-12 w-12 rounded-lg ring-2 ring-white ${
-                            inquiry.selected_image_index === i
-                              ? 'bg-primary-200 ring-primary-500'
-                              : 'bg-gray-200'
-                          }`}
-                        />
-                      ))}
+                    <div className="flex items-center gap-1 text-green-600">
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="text-xs font-medium">Выбран дизайн</span>
                     </div>
+                    <div className="h-12 w-12 rounded-lg bg-primary-200 ring-2 ring-primary-500" />
                   </div>
                 )}
               </div>

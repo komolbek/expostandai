@@ -11,10 +11,20 @@ export async function GET(request: NextRequest) {
     const status = (searchParams.get('status') || 'all') as InquiryStatus | 'all'
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
+    const search = searchParams.get('search') || undefined
+    const dateFrom = searchParams.get('dateFrom') || undefined
+    const dateTo = searchParams.get('dateTo') || undefined
 
-    console.log('[Admin Inquiries] Fetching inquiries:', { status, page, limit })
+    console.log('[Admin Inquiries] Fetching inquiries:', { status, page, limit, search, dateFrom, dateTo })
 
-    const { inquiries, total } = await getInquiries({ status, page, limit })
+    const { inquiries, total } = await getInquiries({
+      status,
+      page,
+      limit,
+      search,
+      dateFrom,
+      dateTo,
+    })
 
     console.log('[Admin Inquiries] Found:', { total, count: inquiries.length })
 

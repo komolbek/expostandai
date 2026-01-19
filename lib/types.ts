@@ -7,7 +7,7 @@ export type MainGoal = 'brand_awareness' | 'sales_increase' | 'trade' | 'prestig
 
 export type BudgetRange = 'economy' | 'standard' | 'premium'
 
-export type InquiryStatus = 'new' | 'quoted' | 'accepted' | 'rejected' | 'archived'
+export type InquiryStatus = 'new' | 'completed'
 
 // Zone and element options
 export type StandZone =
@@ -105,58 +105,12 @@ export interface Inquiry extends Partial<InquiryData>, ContactInfo {
   admin_notes?: string
 }
 
-// Chat message structure
+// Chat message structure (kept for conversation log storage in inquiries)
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
   timestamp: string
-  quickReplies?: string[]
-  multiSelect?: boolean
-  inputType?: 'text' | 'number' | 'date' | 'file'
-}
-
-// Chat state for tracking conversation progress
-export interface ChatState {
-  phase: ChatPhase
-  collectedData: Partial<InquiryData>
-  isComplete: boolean
-}
-
-export type ChatPhase =
-  | 'greeting'
-  | 'company_name'
-  | 'products_services'
-  | 'exhibition_details'
-  | 'area'
-  | 'stand_type'
-  | 'staff_count'
-  | 'main_goal'
-  | 'style'
-  | 'height'
-  | 'suspended'
-  | 'zones'
-  | 'elements'
-  | 'brand_colors'
-  | 'brand_files_upload'
-  | 'previous_stand_upload'
-  | 'budget'
-  | 'special_requests'
-  | 'summary'
-  | 'complete'
-
-// API request/response types
-export interface ChatRequest {
-  messages: ChatMessage[]
-  currentState: ChatState
-}
-
-export interface ChatResponse {
-  message: string
-  quickReplies?: string[]
-  multiSelect?: boolean
-  inputType?: 'text' | 'number' | 'date' | 'file'
-  updatedState: ChatState
 }
 
 export interface GenerateRequest {

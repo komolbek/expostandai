@@ -1,6 +1,7 @@
 // Local JSON file storage for development
 import fs from 'fs'
 import path from 'path'
+import bcrypt from 'bcryptjs'
 import type { Inquiry, InquiryStatus, PromoCode } from './types'
 
 const DATA_DIR = path.join(process.cwd(), 'data')
@@ -131,14 +132,40 @@ export async function getInquiries(options: {
   status?: InquiryStatus | 'all'
   page?: number
   limit?: number
+  search?: string
+  dateFrom?: string
+  dateTo?: string
 }): Promise<{ inquiries: Inquiry[]; total: number }> {
-  const { status = 'all', page = 1, limit = 20 } = options
+  const { status = 'all', page = 1, limit = 20, search, dateFrom, dateTo } = options
 
   let inquiries = readJsonFile<Inquiry[]>(INQUIRIES_FILE, [])
 
   // Filter by status
   if (status !== 'all') {
     inquiries = inquiries.filter((i) => i.status === status)
+  }
+
+  // Filter by search (phone, name, company)
+  if (search && search.trim()) {
+    const searchLower = search.trim().toLowerCase()
+    inquiries = inquiries.filter((i) =>
+      i.phone?.toLowerCase().includes(searchLower) ||
+      i.name?.toLowerCase().includes(searchLower) ||
+      i.company_name?.toLowerCase().includes(searchLower)
+    )
+  }
+
+  // Filter by date range
+  if (dateFrom) {
+    const fromDate = new Date(dateFrom)
+    inquiries = inquiries.filter((i) => new Date(i.created_at) >= fromDate)
+  }
+
+  if (dateTo) {
+    // Add one day to include the entire dateTo day
+    const toDate = new Date(dateTo)
+    toDate.setDate(toDate.getDate() + 1)
+    inquiries = inquiries.filter((i) => new Date(i.created_at) < toDate)
   }
 
   // Sort by created_at descending
@@ -194,16 +221,6 @@ interface AdminUser {
   created_at: string
 }
 
-function simpleHash(password: string): string {
-  let hash = 0
-  for (let i = 0; i < password.length; i++) {
-    const char = password.charCodeAt(i)
-    hash = (hash << 5) - hash + char
-    hash = hash & hash
-  }
-  return hash.toString(16)
-}
-
 export async function getAdminByEmail(email: string): Promise<AdminUser | null> {
   const users = readJsonFile<AdminUser[]>(ADMIN_USERS_FILE, [])
   return users.find((u) => u.email.toLowerCase() === email.toLowerCase()) || null
@@ -215,7 +232,7 @@ export async function createAdminUser(email: string, password: string): Promise<
   const newUser: AdminUser = {
     id: generateUUID(),
     email: email.toLowerCase(),
-    password_hash: simpleHash(password),
+    password_hash: await bcrypt.hash(password, 12),
     created_at: new Date().toISOString(),
   }
 
@@ -230,8 +247,8 @@ export async function getAdminById(id: string): Promise<AdminUser | null> {
   return users.find((u) => u.id === id) || null
 }
 
-export function verifyPassword(password: string, hash: string): boolean {
-  return simpleHash(password) === hash
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  return bcrypt.compare(password, hash)
 }
 
 // ============ PROMO CODES ============
@@ -281,7 +298,10 @@ export async function getPromoCodeByCode(code: string): Promise<PromoCode | null
   return promoCodes.find((p) => p.code.toUpperCase() === code.toUpperCase()) || null
 }
 
-export async function validatePromoCode(code: string): Promise<{
+export async function validatePromoCode(
+  code: string,
+  clientInfo?: { ip?: string; userAgent?: string }
+): Promise<{
   valid: boolean
   error?: string
   promoCode?: PromoCode
@@ -293,6 +313,10 @@ export async function validatePromoCode(code: string): Promise<{
   }
 
   if (promoCode.is_used) {
+    // Extra security: Check if the same user is trying to reuse the code
+    if (clientInfo?.ip && promoCode.used_by_ip === clientInfo.ip) {
+      return { valid: false, error: 'Вы уже использовали этот промокод' }
+    }
     return { valid: false, error: 'Промокод уже использован' }
   }
 
@@ -403,13 +427,38 @@ export async function canGenerate(identifier: string): Promise<{
   allowed: boolean
   remaining: number
   max: number
+  resetsAt?: string
 }> {
+  const trackers = readJsonFile<GenerationTracker[]>(GENERATION_TRACKING_FILE, [])
   const tracker = await getOrCreateGenerationTracker(identifier)
-  const remaining = tracker.max_generations - tracker.generation_count
+  const index = trackers.findIndex((t) => t.identifier === identifier)
+
+  // Check if we need to reset daily count
+  const lastGenDate = new Date(tracker.last_generation_at)
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const lastGenDay = new Date(lastGenDate.getFullYear(), lastGenDate.getMonth(), lastGenDate.getDate())
+
+  let currentCount = tracker.generation_count
+
+  // Reset count if it's a new day
+  if (today > lastGenDay && index !== -1) {
+    trackers[index].generation_count = 0
+    writeJsonFile(GENERATION_TRACKING_FILE, trackers)
+    currentCount = 0
+  }
+
+  const remaining = tracker.max_generations - currentCount
+
+  // Calculate reset time (midnight tonight)
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+
   return {
     allowed: remaining > 0,
     remaining: Math.max(0, remaining),
     max: tracker.max_generations,
+    resetsAt: tomorrow.toISOString(),
   }
 }
 

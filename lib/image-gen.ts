@@ -34,16 +34,18 @@ export interface GeneratedImage {
   variation: 'base' | 'alternative' | 'premium'
 }
 
-// Analyze uploaded logo using GPT-4 Vision
+// Analyze uploaded logo using GPT-4o Vision
 export async function analyzeLogoWithVision(logoUrl: string): Promise<LogoAnalysis> {
   const openai = getOpenAI()
 
   // Convert relative URL to absolute URL for the API
+  // Note: With Uploadthing, all URLs should be absolute already
   const absoluteUrl = logoUrl.startsWith('http')
     ? logoUrl
-    : `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}${logoUrl}`
+    : `${process.env.NEXT_PUBLIC_APP_URL}${logoUrl}`
 
   try {
+    console.log('Analyzing logo with GPT-4o Vision...')
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
       max_tokens: 500,
@@ -64,10 +66,7 @@ Respond ONLY with valid JSON, no other text.`
             },
             {
               type: 'image_url',
-              image_url: {
-                url: absoluteUrl,
-                detail: 'high'
-              }
+              image_url: { url: absoluteUrl, detail: 'high' }
             }
           ]
         }
@@ -76,7 +75,7 @@ Respond ONLY with valid JSON, no other text.`
 
     const content = response.choices[0]?.message?.content
     if (!content) {
-      throw new Error('No response from GPT-4 Vision')
+      throw new Error('No response from GPT-4o Vision')
     }
 
     // Parse JSON response
@@ -168,7 +167,7 @@ async function generateWithFlux(prompt: string): Promise<string> {
   throw new Error('No image URL returned from Flux')
 }
 
-// Generate a single image with fallback
+// Generate a single image with fallback chain: DALL-E 3 -> Flux
 async function generateSingleImage(
   data: Partial<InquiryData>,
   variation: 'base' | 'alternative' | 'premium',
@@ -176,20 +175,22 @@ async function generateSingleImage(
 ): Promise<GeneratedImage> {
   const prompt = buildImagePrompt(data, variation, logoAnalysis)
 
-  // Try DALL-E first, fall back to Flux
+  // Try DALL-E 3 first
   try {
     console.log(`Generating ${variation} image with DALL-E 3...`)
     const url = await generateWithDalle(prompt)
     return { url, variation }
   } catch (dalleError) {
-    console.error('DALL-E generation failed, trying Flux:', dalleError)
+    console.error('DALL-E 3 generation failed, trying Flux:', dalleError)
 
+    // Try Flux as fallback
     try {
+      console.log(`Generating ${variation} image with Flux...`)
       const url = await generateWithFlux(prompt)
       return { url, variation }
     } catch (fluxError) {
       console.error('Flux generation also failed:', fluxError)
-      throw new Error(`Image generation failed for ${variation}: Both DALL-E and Flux failed`)
+      throw new Error(`Image generation failed for ${variation}: All providers failed`)
     }
   }
 }
@@ -217,7 +218,7 @@ export async function generateStandDesigns(
   const variations: Array<'base' | 'alternative' | 'premium'> = ['base', 'alternative', 'premium']
 
   // Generate images sequentially to avoid rate limits
-  // DALL-E 3 has a limit of 1 image per request anyway
+  // DALL-E 3 has limits on concurrent requests
   const images: GeneratedImage[] = []
 
   for (const variation of variations) {

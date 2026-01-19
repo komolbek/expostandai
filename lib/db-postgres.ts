@@ -1,4 +1,5 @@
 import { Pool } from 'pg'
+import bcrypt from 'bcryptjs'
 import type { Inquiry, InquiryStatus, PromoCode } from './types'
 
 // Create connection pool
@@ -203,18 +204,59 @@ export async function getInquiries(options: {
   status?: InquiryStatus | 'all'
   page?: number
   limit?: number
+  search?: string
+  dateFrom?: string
+  dateTo?: string
 }): Promise<{ inquiries: Inquiry[]; total: number }> {
-  const { status = 'all', page = 1, limit = 20 } = options
+  const { status = 'all', page = 1, limit = 20, search, dateFrom, dateTo } = options
   const offset = (page - 1) * limit
 
   let query = 'SELECT * FROM inquiries'
   let countQuery = 'SELECT COUNT(*) FROM inquiries'
   const params: unknown[] = []
+  const countParams: unknown[] = []
+  const conditions: string[] = []
 
+  // Status filter
   if (status !== 'all') {
-    query += ' WHERE status = $1'
-    countQuery += ' WHERE status = $1'
+    conditions.push(`status = $${params.length + 1}`)
     params.push(status)
+    countParams.push(status)
+  }
+
+  // Search filter (phone, name, company)
+  if (search && search.trim()) {
+    const searchPattern = `%${search.trim()}%`
+    conditions.push(`(
+      contact_phone ILIKE $${params.length + 1} OR
+      contact_name ILIKE $${params.length + 1} OR
+      company_name ILIKE $${params.length + 1}
+    )`)
+    params.push(searchPattern)
+    countParams.push(searchPattern)
+  }
+
+  // Date range filter
+  if (dateFrom) {
+    conditions.push(`created_at >= $${params.length + 1}`)
+    params.push(dateFrom)
+    countParams.push(dateFrom)
+  }
+
+  if (dateTo) {
+    // Add one day to include the entire dateTo day
+    const dateToEnd = new Date(dateTo)
+    dateToEnd.setDate(dateToEnd.getDate() + 1)
+    conditions.push(`created_at < $${params.length + 1}`)
+    params.push(dateToEnd.toISOString())
+    countParams.push(dateToEnd.toISOString())
+  }
+
+  // Apply conditions
+  if (conditions.length > 0) {
+    const whereClause = ' WHERE ' + conditions.join(' AND ')
+    query += whereClause
+    countQuery += whereClause
   }
 
   query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`
@@ -222,7 +264,7 @@ export async function getInquiries(options: {
 
   const [inquiriesResult, countResult] = await Promise.all([
     pool.query(query, params),
-    pool.query(countQuery, status !== 'all' ? [status] : []),
+    pool.query(countQuery, countParams),
   ])
 
   return {
@@ -330,7 +372,7 @@ export async function getAdminByEmail(email: string): Promise<AdminUser | null> 
 }
 
 export async function createAdminUser(email: string, password: string): Promise<AdminUser> {
-  const passwordHash = simpleHash(password)
+  const passwordHash = await bcrypt.hash(password, 12)
   const result = await pool.query(
     'INSERT INTO admin_users (email, password_hash) VALUES (LOWER($1), $2) RETURNING *',
     [email, passwordHash]
@@ -356,18 +398,8 @@ export async function getAdminById(id: string): Promise<AdminUser | null> {
   }
 }
 
-function simpleHash(password: string): string {
-  let hash = 0
-  for (let i = 0; i < password.length; i++) {
-    const char = password.charCodeAt(i)
-    hash = (hash << 5) - hash + char
-    hash = hash & hash
-  }
-  return hash.toString(16)
-}
-
-export function verifyPassword(password: string, hash: string): boolean {
-  return simpleHash(password) === hash
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  return bcrypt.compare(password, hash)
 }
 
 // ============ PROMO CODES ============
@@ -398,7 +430,10 @@ export async function getPromoCodeByCode(code: string): Promise<PromoCode | null
   return result.rows.length > 0 ? mapRowToPromoCode(result.rows[0]) : null
 }
 
-export async function validatePromoCode(code: string): Promise<{
+export async function validatePromoCode(
+  code: string,
+  clientInfo?: { ip?: string; userAgent?: string }
+): Promise<{
   valid: boolean
   error?: string
   promoCode?: PromoCode
@@ -410,6 +445,10 @@ export async function validatePromoCode(code: string): Promise<{
   }
 
   if (promoCode.is_used) {
+    // Extra security: Check if the same user is trying to reuse the code
+    if (clientInfo?.ip && promoCode.used_by_ip === clientInfo.ip) {
+      return { valid: false, error: 'Вы уже использовали этот промокод' }
+    }
     return { valid: false, error: 'Промокод уже использован' }
   }
 
@@ -523,13 +562,38 @@ export async function canGenerate(identifier: string): Promise<{
   allowed: boolean
   remaining: number
   max: number
+  resetsAt?: string
 }> {
   const tracker = await getOrCreateGenerationTracker(identifier)
-  const remaining = tracker.max_generations - tracker.generation_count
+
+  // Check if we need to reset daily count
+  const lastGenDate = new Date(tracker.last_generation_at)
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const lastGenDay = new Date(lastGenDate.getFullYear(), lastGenDate.getMonth(), lastGenDate.getDate())
+
+  let currentCount = tracker.generation_count
+
+  // Reset count if it's a new day
+  if (today > lastGenDay) {
+    await pool.query(
+      `UPDATE generation_tracking SET generation_count = 0 WHERE identifier = $1`,
+      [identifier]
+    )
+    currentCount = 0
+  }
+
+  const remaining = tracker.max_generations - currentCount
+
+  // Calculate reset time (midnight tonight)
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+
   return {
     allowed: remaining > 0,
     remaining: Math.max(0, remaining),
     max: tracker.max_generations,
+    resetsAt: tomorrow.toISOString(),
   }
 }
 

@@ -13,8 +13,11 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.71.2",
     "@tailwindcss/postcss": "^4.1.18",
+    "@uploadthing/react": "^7.3.0",
+    "bcryptjs": "^2.4.3",
+    "uploadthing": "^7.7.0",
+    "zod": "^3.24.0",
     "@types/pg": "^8.16.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -30,6 +33,7 @@
     "tailwindcss": "^4.1.18"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^25.0.7",
     "@types/react": "^19.2.8",
     "autoprefixer": "^10.4.23",

@@ -4,10 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { Textarea } from '@/components/ui/Textarea'
-import { Badge, StatusSelect } from '@/components/ui/Badge'
+import { Badge } from '@/components/ui/Badge'
 import {
   formatDateTime,
   formatBudget,
@@ -17,7 +14,7 @@ import {
   formatElement,
   formatGoal,
 } from '@/lib/utils'
-import type { Inquiry, InquiryStatus } from '@/lib/types'
+import type { Inquiry } from '@/lib/types'
 import {
   ArrowLeft,
   Building,
@@ -29,7 +26,6 @@ import {
   Palette,
   Target,
   DollarSign,
-  Save,
   Loader2,
 } from 'lucide-react'
 
@@ -43,11 +39,6 @@ export function InquiryDetail({ inquiryId }: InquiryDetailProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  // Edit state
-  const [status, setStatus] = useState<InquiryStatus>('new')
-  const [quotedPrice, setQuotedPrice] = useState('')
-  const [adminNotes, setAdminNotes] = useState('')
 
   useEffect(() => {
     const fetchInquiry = async () => {
@@ -64,9 +55,6 @@ export function InquiryDetail({ inquiryId }: InquiryDetailProps) {
 
         const data = await response.json()
         setInquiry(data)
-        setStatus(data.status)
-        setQuotedPrice(data.quoted_price?.toString() || '')
-        setAdminNotes(data.admin_notes || '')
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Ошибка загрузки')
       } finally {
@@ -77,28 +65,27 @@ export function InquiryDetail({ inquiryId }: InquiryDetailProps) {
     fetchInquiry()
   }, [inquiryId, router])
 
-  const handleSave = async () => {
+  const handleStatusToggle = async () => {
+    if (!inquiry) return
+
     setIsSaving(true)
+    const newStatus = inquiry.status === 'new' ? 'completed' : 'new'
 
     try {
       const response = await fetch(`/api/admin/inquiries/${inquiryId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status,
-          quoted_price: quotedPrice ? parseFloat(quotedPrice) : null,
-          admin_notes: adminNotes || null,
-        }),
+        body: JSON.stringify({ status: newStatus }),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to update inquiry')
+        throw new Error('Failed to update status')
       }
 
       const updated = await response.json()
       setInquiry(updated)
     } catch (err) {
-      alert('Ошибка сохранения')
+      alert('Ошибка обновления статуса')
     } finally {
       setIsSaving(false)
     }
@@ -192,20 +179,15 @@ export function InquiryDetail({ inquiryId }: InquiryDetailProps) {
                 label="Габариты (Ш×Г×В)"
                 value={
                   inquiry.width_meters && inquiry.length_meters && inquiry.height_meters
-                    ? `${inquiry.width_meters}×${inquiry.length_meters}×${inquiry.height_meters} м`
-                    : inquiry.height_meters
-                    ? `${inquiry.height_meters} м (высота)`
-                    : '—'
-                }
-              />
-              <InfoItem
-                icon={Building}
-                label="Площадь"
-                value={
-                  inquiry.width_meters && inquiry.length_meters
-                    ? `${inquiry.width_meters * inquiry.length_meters} м²`
+                    ? `${inquiry.width_meters}×${inquiry.length_meters}×${inquiry.height_meters} м (${inquiry.width_meters * inquiry.length_meters} м²)`
+                    : inquiry.width_meters && inquiry.length_meters
+                    ? `${inquiry.width_meters}×${inquiry.length_meters} м (${inquiry.width_meters * inquiry.length_meters} м²)`
+                    : inquiry.area_sqm && inquiry.height_meters
+                    ? `${inquiry.area_sqm} м², высота ${inquiry.height_meters} м`
                     : inquiry.area_sqm
                     ? `${inquiry.area_sqm} м²`
+                    : inquiry.height_meters
+                    ? `высота ${inquiry.height_meters} м`
                     : '—'
                 }
               />
@@ -284,136 +266,139 @@ export function InquiryDetail({ inquiryId }: InquiryDetailProps) {
             )}
 
             {/* Brand colors */}
-            {inquiry.brand_colors && (
-              <div className="mt-4 border-t border-gray-100 pt-4">
-                <p className="mb-2 text-sm text-gray-500">Цвета бренда:</p>
-                <p className="text-gray-900">{inquiry.brand_colors}</p>
-              </div>
-            )}
+            {(() => {
+              // Extract colors from brand_colors string if structured fields are not available
+              let mainColor = inquiry.color_main
+              let accentColor = inquiry.color_accent
+              let bgColor = inquiry.color_background
+
+              // Parse old format: "Main: #ff2600, Accent: #0433ff"
+              if (!mainColor && !accentColor && inquiry.brand_colors) {
+                const mainMatch = inquiry.brand_colors.match(/Main:\s*(#[0-9a-fA-F]{6})/i)
+                const accentMatch = inquiry.brand_colors.match(/Accent:\s*(#[0-9a-fA-F]{6})/i)
+                const bgMatch = inquiry.brand_colors.match(/Background:\s*(#[0-9a-fA-F]{6})/i)
+
+                if (mainMatch) mainColor = mainMatch[1]
+                if (accentMatch) accentColor = accentMatch[1]
+                if (bgMatch) bgColor = bgMatch[1]
+              }
+
+              const hasColors = mainColor || accentColor || bgColor || inquiry.brand_colors
+
+              if (!hasColors) return null
+
+              return (
+                <div className="mt-4 border-t border-gray-100 pt-4">
+                  <p className="mb-2 text-sm text-gray-500">Цвета бренда:</p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {mainColor && (
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="h-8 w-8 rounded-lg border-2 border-gray-200 shadow-sm"
+                          style={{ backgroundColor: mainColor }}
+                        />
+                        <div>
+                          <p className="text-xs text-gray-500">Основной</p>
+                          <p className="font-mono text-sm text-gray-900">{mainColor}</p>
+                        </div>
+                      </div>
+                    )}
+                    {accentColor && (
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="h-8 w-8 rounded-lg border-2 border-gray-200 shadow-sm"
+                          style={{ backgroundColor: accentColor }}
+                        />
+                        <div>
+                          <p className="text-xs text-gray-500">Акцентный</p>
+                          <p className="font-mono text-sm text-gray-900">{accentColor}</p>
+                        </div>
+                      </div>
+                    )}
+                    {bgColor && (
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="h-8 w-8 rounded-lg border-2 border-gray-200 shadow-sm"
+                          style={{ backgroundColor: bgColor }}
+                        />
+                        <div>
+                          <p className="text-xs text-gray-500">Фон</p>
+                          <p className="font-mono text-sm text-gray-900">{bgColor}</p>
+                        </div>
+                      </div>
+                    )}
+                    {inquiry.brand_colors && !mainColor && !accentColor && !bgColor && (
+                      <p className="text-gray-900">{inquiry.brand_colors}</p>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
           </section>
 
-          {/* Generated images */}
+          {/* Selected design */}
           {inquiry.generated_images && inquiry.generated_images.length > 0 && (
             <section className="card">
               <h2 className="mb-4 text-lg font-semibold text-gray-900">
-                {inquiry.selected_image_index !== undefined && inquiry.selected_image_index !== null
-                  ? 'Выбранный клиентом дизайн'
-                  : 'Сгенерированные дизайны'}
+                Выбранный клиентом дизайн
               </h2>
 
-              {/* Show selected design prominently */}
-              {inquiry.selected_image_index !== undefined && inquiry.selected_image_index !== null && (
-                <div className="mb-6">
-                  <a
-                    href={inquiry.generated_images[inquiry.selected_image_index]}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block aspect-video overflow-hidden rounded-xl bg-gray-100 ring-4 ring-primary-500 ring-offset-2"
-                  >
-                    <Image
-                      src={inquiry.generated_images[inquiry.selected_image_index]}
-                      alt="Выбранный дизайн"
-                      width={800}
-                      height={450}
-                      className="h-full w-full object-cover"
-                    />
-                  </a>
-                  <p className="mt-2 text-center text-sm font-medium text-primary-600">
-                    Клиент выбрал этот вариант
-                  </p>
-                </div>
-              )}
-
-              {/* Show other designs as smaller thumbnails */}
-              {inquiry.generated_images.length > 1 && (
-                <div>
-                  <p className="mb-2 text-sm text-gray-500">
-                    {inquiry.selected_image_index !== undefined && inquiry.selected_image_index !== null
-                      ? 'Другие варианты:'
-                      : 'Клиент не выбрал предпочтительный вариант:'}
-                  </p>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    {inquiry.generated_images.map((url, i) => {
-                      const isSelected = inquiry.selected_image_index === i
-                      if (isSelected && inquiry.selected_image_index !== undefined) return null
-                      return (
-                        <a
-                          key={i}
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="aspect-video overflow-hidden rounded-lg bg-gray-100 opacity-70 hover:opacity-100 transition-opacity"
-                        >
-                          <Image
-                            src={url}
-                            alt={`Дизайн ${i + 1}`}
-                            width={300}
-                            height={169}
-                            className="h-full w-full object-cover"
-                          />
-                        </a>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* If only one image and no selection made, show it */}
-              {inquiry.generated_images.length === 1 && (inquiry.selected_image_index === undefined || inquiry.selected_image_index === null) && (
-                <a
-                  href={inquiry.generated_images[0]}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block aspect-video overflow-hidden rounded-lg bg-gray-100"
-                >
-                  <Image
-                    src={inquiry.generated_images[0]}
-                    alt="Дизайн 1"
-                    width={400}
-                    height={225}
-                    className="h-full w-full object-cover"
-                  />
-                </a>
-              )}
+              <a
+                href={inquiry.generated_images[0]}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block aspect-video overflow-hidden rounded-xl bg-gray-100 ring-4 ring-primary-500 ring-offset-2"
+              >
+                <Image
+                  src={inquiry.generated_images[0]}
+                  alt="Выбранный дизайн"
+                  width={800}
+                  height={450}
+                  className="h-full w-full object-cover"
+                />
+              </a>
+              <p className="mt-2 text-center text-sm font-medium text-primary-600">
+                Клиент выбрал этот вариант
+              </p>
             </section>
           )}
         </div>
 
-        {/* Admin panel */}
+        {/* Info panel */}
         <div className="space-y-6">
           <section className="card">
-            <h2 className="mb-4 text-lg font-semibold text-gray-900">Управление</h2>
+            <h2 className="mb-4 text-lg font-semibold text-gray-900">Информация</h2>
 
             <div className="space-y-4">
               <div>
-                <label className="label">Статус</label>
-                <StatusSelect value={status} onChange={setStatus} />
+                <p className="text-sm text-gray-500">Дата создания</p>
+                <p className="font-medium text-gray-900">{formatDateTime(inquiry.created_at)}</p>
               </div>
 
-              <Input
-                label="Цена расчёта ($)"
-                type="number"
-                value={quotedPrice}
-                onChange={(e) => setQuotedPrice(e.target.value)}
-                placeholder="15000"
-              />
+              <div>
+                <p className="text-sm text-gray-500">ID заявки</p>
+                <p className="font-mono text-sm text-gray-600">{inquiry.id}</p>
+              </div>
 
-              <Textarea
-                label="Внутренние заметки"
-                value={adminNotes}
-                onChange={(e) => setAdminNotes(e.target.value)}
-                placeholder="Заметки для команды..."
-                rows={4}
-              />
-
-              <Button
-                onClick={handleSave}
-                loading={isSaving}
-                className="w-full"
-                leftIcon={<Save className="h-4 w-4" />}
-              >
-                Сохранить
-              </Button>
+              <div>
+                <p className="text-sm text-gray-500">Статус</p>
+                <Badge status={inquiry.status} />
+                <button
+                  onClick={handleStatusToggle}
+                  disabled={isSaving}
+                  className={`mt-2 w-full rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 ${
+                    inquiry.status === 'new'
+                      ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {isSaving
+                    ? 'Сохранение...'
+                    : inquiry.status === 'new'
+                    ? 'Отметить выполненной'
+                    : 'Отметить как новую'}
+                </button>
+              </div>
             </div>
           </section>
         </div>

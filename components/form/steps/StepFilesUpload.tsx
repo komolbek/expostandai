@@ -1,9 +1,12 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { X, FileText, Image } from 'lucide-react'
+import { useState, useCallback } from 'react'
+import { X, FileText, Image, Loader2, Upload } from 'lucide-react'
 import type { InquiryData, UploadedFile } from '@/lib/types'
 import { generateId } from '@/lib/utils'
+import { useDropzone } from '@uploadthing/react'
+import { generateClientDropzoneAccept, generatePermittedFileTypes } from 'uploadthing/client'
+import { useUploadThing } from '@/lib/uploadthing-client'
 
 interface StepFilesUploadProps {
   data: Partial<InquiryData>
@@ -11,53 +14,87 @@ interface StepFilesUploadProps {
 }
 
 export function StepFilesUpload({ data, onChange }: StepFilesUploadProps) {
-  const [isUploading, setIsUploading] = useState(false)
-  const brandInputRef = useRef<HTMLInputElement>(null)
-  const standInputRef = useRef<HTMLInputElement>(null)
+  const [isUploadingBrand, setIsUploadingBrand] = useState(false)
+  const [isUploadingStand, setIsUploadingStand] = useState(false)
 
   const brandFiles = data.brand_files || []
   const previousStandFiles = data.previous_stand_files || []
 
-  const handleFileUpload = async (
-    files: FileList,
-    type: 'brand' | 'stand'
-  ) => {
-    setIsUploading(true)
-    const uploadedFiles: UploadedFile[] = []
+  // Brand files uploader
+  const { startUpload: startBrandUpload, routeConfig: brandRouteConfig } = useUploadThing('brandFiles', {
+    onClientUploadComplete: (res) => {
+      const newFiles: UploadedFile[] = res.map((file) => ({
+        id: generateId(),
+        name: file.name,
+        url: file.ufsUrl,
+        type: file.type,
+        size: file.size,
+      }))
+      onChange({ brand_files: [...brandFiles, ...newFiles] })
+      setIsUploadingBrand(false)
+    },
+    onUploadError: (error) => {
+      console.error('Brand upload error:', error)
+      setIsUploadingBrand(false)
+      alert('Ошибка загрузки файла. Попробуйте ещё раз.')
+    },
+    onUploadBegin: () => {
+      setIsUploadingBrand(true)
+    },
+  })
 
-    for (const file of Array.from(files)) {
-      try {
-        const formData = new FormData()
-        formData.append('file', file)
+  // Stand photos uploader
+  const { startUpload: startStandUpload, routeConfig: standRouteConfig } = useUploadThing('standPhotos', {
+    onClientUploadComplete: (res) => {
+      const newFiles: UploadedFile[] = res.map((file) => ({
+        id: generateId(),
+        name: file.name,
+        url: file.ufsUrl,
+        type: file.type,
+        size: file.size,
+      }))
+      onChange({ previous_stand_files: [...previousStandFiles, ...newFiles] })
+      setIsUploadingStand(false)
+    },
+    onUploadError: (error) => {
+      console.error('Stand upload error:', error)
+      setIsUploadingStand(false)
+      alert('Ошибка загрузки фото. Попробуйте ещё раз.')
+    },
+    onUploadBegin: () => {
+      setIsUploadingStand(true)
+    },
+  })
 
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        })
-
-        if (response.ok) {
-          const result = await response.json()
-          uploadedFiles.push({
-            id: generateId(),
-            name: file.name,
-            url: result.url,
-            type: file.type,
-            size: file.size,
-          })
-        }
-      } catch (error) {
-        console.error('Upload failed:', error)
+  // Brand files dropzone
+  const onDropBrand = useCallback(
+    (acceptedFiles: File[]) => {
+      if (acceptedFiles.length > 0) {
+        startBrandUpload(acceptedFiles)
       }
-    }
+    },
+    [startBrandUpload]
+  )
 
-    if (type === 'brand') {
-      onChange({ brand_files: [...brandFiles, ...uploadedFiles] })
-    } else {
-      onChange({ previous_stand_files: [...previousStandFiles, ...uploadedFiles] })
-    }
+  const { getRootProps: getBrandRootProps, getInputProps: getBrandInputProps, isDragActive: isBrandDragActive } = useDropzone({
+    onDrop: onDropBrand,
+    accept: brandRouteConfig ? generateClientDropzoneAccept(generatePermittedFileTypes(brandRouteConfig).fileTypes) : undefined,
+  })
 
-    setIsUploading(false)
-  }
+  // Stand photos dropzone
+  const onDropStand = useCallback(
+    (acceptedFiles: File[]) => {
+      if (acceptedFiles.length > 0) {
+        startStandUpload(acceptedFiles)
+      }
+    },
+    [startStandUpload]
+  )
+
+  const { getRootProps: getStandRootProps, getInputProps: getStandInputProps, isDragActive: isStandDragActive } = useDropzone({
+    onDrop: onDropStand,
+    accept: standRouteConfig ? generateClientDropzoneAccept(generatePermittedFileTypes(standRouteConfig).fileTypes) : undefined,
+  })
 
   const removeFile = (type: 'brand' | 'stand', index: number) => {
     if (type === 'brand') {
@@ -67,17 +104,6 @@ export function StepFilesUpload({ data, onChange }: StepFilesUploadProps) {
       const newFiles = previousStandFiles.filter((_, i) => i !== index)
       onChange({ previous_stand_files: newFiles })
     }
-  }
-
-  const handleDrop = (e: React.DragEvent, type: 'brand' | 'stand') => {
-    e.preventDefault()
-    if (e.dataTransfer.files.length > 0) {
-      handleFileUpload(e.dataTransfer.files, type)
-    }
-  }
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
   }
 
   return (
@@ -94,32 +120,30 @@ export function StepFilesUpload({ data, onChange }: StepFilesUploadProps) {
           <span className="ml-2 text-xs text-gray-400">(логотипы, брендбук - до 20 файлов)</span>
         </label>
         <div
-          onDrop={(e) => handleDrop(e, 'brand')}
-          onDragOver={handleDragOver}
-          className="rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-6 text-center transition-colors hover:border-primary-400 hover:bg-primary-50/50"
+          {...getBrandRootProps()}
+          className={`rounded-xl border-2 border-dashed p-6 text-center transition-colors cursor-pointer ${
+            isBrandDragActive
+              ? 'border-primary-500 bg-primary-50'
+              : 'border-gray-300 bg-gray-50 hover:border-primary-400 hover:bg-primary-50/50'
+          }`}
         >
-          <FileText className="mx-auto h-10 w-10 text-gray-400" />
-          <p className="mt-2 text-sm text-gray-600">
-            Перетащите файлы сюда или{' '}
-            <button
-              type="button"
-              onClick={() => brandInputRef.current?.click()}
-              className="text-primary-600 hover:underline"
-            >
-              выберите
-            </button>
-          </p>
-          <p className="mt-1 text-xs text-gray-400">
-            EPS, CDR, AI, PDF, PNG, JPG, SVG
-          </p>
-          <input
-            ref={brandInputRef}
-            type="file"
-            multiple
-            accept=".eps,.cdr,.ai,.pdf,.png,.jpg,.jpeg,.svg"
-            onChange={(e) => e.target.files && handleFileUpload(e.target.files, 'brand')}
-            className="hidden"
-          />
+          <input {...getBrandInputProps()} />
+          {isUploadingBrand ? (
+            <>
+              <Loader2 className="mx-auto h-10 w-10 text-primary-500 animate-spin" />
+              <p className="mt-2 text-sm text-gray-600">Загрузка файлов...</p>
+            </>
+          ) : (
+            <>
+              <FileText className="mx-auto h-10 w-10 text-gray-400" />
+              <p className="mt-2 text-sm text-gray-600">
+                {isBrandDragActive ? 'Отпустите файлы здесь' : 'Перетащите файлы сюда или нажмите для выбора'}
+              </p>
+              <p className="mt-1 text-xs text-gray-400">
+                PNG, JPG, PDF (до 8MB для изображений, до 16MB для PDF)
+              </p>
+            </>
+          )}
         </div>
 
         {/* Brand Files List */}
@@ -127,7 +151,7 @@ export function StepFilesUpload({ data, onChange }: StepFilesUploadProps) {
           <div className="mt-3 space-y-2">
             {brandFiles.map((file, index) => (
               <div
-                key={index}
+                key={file.id}
                 className="flex items-center justify-between rounded-lg bg-gray-100 px-3 py-2"
               >
                 <div className="flex items-center gap-2">
@@ -154,32 +178,30 @@ export function StepFilesUpload({ data, onChange }: StepFilesUploadProps) {
           <span className="ml-2 text-xs text-gray-400">(опционально - до 20 фото)</span>
         </label>
         <div
-          onDrop={(e) => handleDrop(e, 'stand')}
-          onDragOver={handleDragOver}
-          className="rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-6 text-center transition-colors hover:border-primary-400 hover:bg-primary-50/50"
+          {...getStandRootProps()}
+          className={`rounded-xl border-2 border-dashed p-6 text-center transition-colors cursor-pointer ${
+            isStandDragActive
+              ? 'border-primary-500 bg-primary-50'
+              : 'border-gray-300 bg-gray-50 hover:border-primary-400 hover:bg-primary-50/50'
+          }`}
         >
-          <Image className="mx-auto h-10 w-10 text-gray-400" />
-          <p className="mt-2 text-sm text-gray-600">
-            Перетащите фото сюда или{' '}
-            <button
-              type="button"
-              onClick={() => standInputRef.current?.click()}
-              className="text-primary-600 hover:underline"
-            >
-              выберите
-            </button>
-          </p>
-          <p className="mt-1 text-xs text-gray-400">
-            PNG, JPG, JPEG, WebP, HEIC
-          </p>
-          <input
-            ref={standInputRef}
-            type="file"
-            multiple
-            accept=".png,.jpg,.jpeg,.webp,.heic"
-            onChange={(e) => e.target.files && handleFileUpload(e.target.files, 'stand')}
-            className="hidden"
-          />
+          <input {...getStandInputProps()} />
+          {isUploadingStand ? (
+            <>
+              <Loader2 className="mx-auto h-10 w-10 text-primary-500 animate-spin" />
+              <p className="mt-2 text-sm text-gray-600">Загрузка фото...</p>
+            </>
+          ) : (
+            <>
+              <Image className="mx-auto h-10 w-10 text-gray-400" />
+              <p className="mt-2 text-sm text-gray-600">
+                {isStandDragActive ? 'Отпустите фото здесь' : 'Перетащите фото сюда или нажмите для выбора'}
+              </p>
+              <p className="mt-1 text-xs text-gray-400">
+                PNG, JPG, WebP (до 8MB)
+              </p>
+            </>
+          )}
         </div>
 
         {/* Stand Files List */}
@@ -187,7 +209,7 @@ export function StepFilesUpload({ data, onChange }: StepFilesUploadProps) {
           <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
             {previousStandFiles.map((file, index) => (
               <div
-                key={index}
+                key={file.id}
                 className="relative group rounded-lg overflow-hidden bg-gray-100"
               >
                 <img
@@ -207,12 +229,6 @@ export function StepFilesUpload({ data, onChange }: StepFilesUploadProps) {
           </div>
         )}
       </div>
-
-      {isUploading && (
-        <div className="text-center text-sm text-gray-500">
-          Загрузка файлов...
-        </div>
-      )}
     </div>
   )
 }

@@ -11,7 +11,7 @@ import { StepZonesElements } from './steps/StepZonesElements'
 import { StepFilesUpload } from './steps/StepFilesUpload'
 import { StepBudgetNotes } from './steps/StepBudgetNotes'
 import { StepContactInfo } from './steps/StepContactInfo'
-import { GeneratedImages } from '@/components/chat/GeneratedImages'
+import { GeneratedImages } from '@/components/ui/GeneratedImages'
 import { Input } from '@/components/ui/Input'
 import type { InquiryData, ContactInfo } from '@/lib/types'
 
@@ -97,13 +97,13 @@ export function StandForm() {
       return
     }
 
-    // Simulate progress: fast at start, slower towards end
-    // Total expected time ~45-60 seconds for 3 images
+    // Simulate progress: fast at start, much slower after 50%
+    // Total expected time ~60-90 seconds for 3 images
     const interval = setInterval(() => {
       setGenerationProgress((prev) => {
         if (prev >= 95) return prev // Cap at 95% until complete
-        // Faster at start, slower as it progresses
-        const increment = prev < 30 ? 2 : prev < 60 ? 1.5 : prev < 80 ? 1 : 0.5
+        // Fast before 50%, very slow after
+        const increment = prev < 30 ? 3 : prev < 50 ? 2 : prev < 70 ? 0.5 : prev < 85 ? 0.3 : 0.1
         return Math.min(prev + increment, 95)
       })
     }, 1000)
@@ -426,22 +426,15 @@ export function StandForm() {
                   <p className="text-xs text-gray-400 mt-2">
                     {generationProgress < 30
                       ? 'Анализируем параметры...'
-                      : generationProgress < 60
-                      ? 'Генерируем первые варианты...'
-                      : generationProgress < 85
-                      ? 'Завершаем генерацию...'
+                      : generationProgress < 50
+                      ? 'Генерируем первый вариант...'
+                      : generationProgress < 70
+                      ? 'Генерируем второй вариант...'
+                      : generationProgress < 90
+                      ? 'Генерируем третий вариант...'
                       : 'Почти готово...'}
                   </p>
                 </div>
-
-                <Button
-                  variant="secondary"
-                  onClick={handleCancelGeneration}
-                  className="mt-4"
-                  size="sm"
-                >
-                  Отменить
-                </Button>
               </div>
             )}
 

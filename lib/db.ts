@@ -61,6 +61,9 @@ export async function getInquiries(options: {
   status?: InquiryStatus | 'all'
   page?: number
   limit?: number
+  search?: string
+  dateFrom?: string
+  dateTo?: string
 }): Promise<{ inquiries: Inquiry[]; total: number }> {
   const db = await getDbModule()
   return db.getInquiries(options)
@@ -100,15 +103,9 @@ export async function getAdminById(id: string) {
   return db.getAdminById(id)
 }
 
-export function verifyPassword(password: string, hash: string): boolean {
-  // Simple hash comparison - same algorithm in both modules
-  let computedHash = 0
-  for (let i = 0; i < password.length; i++) {
-    const char = password.charCodeAt(i)
-    computedHash = (computedHash << 5) - computedHash + char
-    computedHash = computedHash & computedHash
-  }
-  return computedHash.toString(16) === hash
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  const db = await getDbModule()
+  return db.verifyPassword(password, hash)
 }
 
 // ============ PROMO CODES ============
@@ -131,13 +128,16 @@ export async function getPromoCodeByCode(code: string): Promise<PromoCode | null
   return db.getPromoCodeByCode(code)
 }
 
-export async function validatePromoCode(code: string): Promise<{
+export async function validatePromoCode(
+  code: string,
+  clientInfo?: { ip?: string; userAgent?: string }
+): Promise<{
   valid: boolean
   error?: string
   promoCode?: PromoCode
 }> {
   const db = await getDbModule()
-  return db.validatePromoCode(code)
+  return db.validatePromoCode(code, clientInfo)
 }
 
 export async function usePromoCode(
@@ -181,6 +181,7 @@ export async function canGenerate(identifier: string): Promise<{
   allowed: boolean
   remaining: number
   max: number
+  resetsAt?: string
 }> {
   const db = await getDbModule()
   return db.canGenerate(identifier)

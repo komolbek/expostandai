@@ -13,6 +13,9 @@ function getResendClient() {
 interface NotificationData {
   company_name: string
   area_sqm?: number
+  width_meters?: number
+  length_meters?: number
+  height_meters?: number
   stand_type?: string
   budget_range?: string
   contact_name: string
@@ -29,7 +32,11 @@ export async function sendEmailNotification(data: NotificationData): Promise<boo
     return false
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!appUrl) {
+    console.warn('NEXT_PUBLIC_APP_URL not configured, skipping email notification')
+    return false
+  }
   const adminUrl = `${appUrl}/admin/${data.inquiryId}`
 
   try {
@@ -41,6 +48,9 @@ export async function sendEmailNotification(data: NotificationData): Promise<boo
       html: getNewInquiryEmailHtml({
         company_name: data.company_name,
         area_sqm: data.area_sqm,
+        width_meters: data.width_meters,
+        length_meters: data.length_meters,
+        height_meters: data.height_meters,
         stand_type: data.stand_type,
         budget_range: data.budget_range,
         contact_name: data.contact_name,
@@ -67,12 +77,19 @@ export async function sendTelegramNotification(data: NotificationData): Promise<
     return false
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!appUrl) {
+    console.warn('NEXT_PUBLIC_APP_URL not configured, skipping Telegram notification')
+    return false
+  }
   const adminUrl = `${appUrl}/admin/${data.inquiryId}`
 
   const message = getTelegramMessage({
     company_name: data.company_name,
     area_sqm: data.area_sqm,
+    width_meters: data.width_meters,
+    length_meters: data.length_meters,
+    height_meters: data.height_meters,
     stand_type: data.stand_type,
     budget_range: data.budget_range,
     contact_phone: data.contact_phone,
